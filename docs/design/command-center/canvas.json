@@ -1,0 +1,13 @@
+{
+  "artboards": [
+    { "file": "DesignSystem.dc.html", "x": 0, "y": 0, "w": 1200, "h": 3400, "title": "Design System" },
+    { "file": "SentimentInstrument.dc.html", "x": 1300, "y": 0, "w": 300, "h": 240, "title": "Sentiment Instrument" },
+    { "file": "Main.dc.html", "x": 0, "y": 3550, "w": 1440, "h": 1300, "title": "Command Center" },
+    { "file": "SignalCard.dc.html", "x": 0, "y": 5000, "w": 420, "h": 1250, "title": "Signal Card" },
+    { "file": "AIAnalyst.dc.html", "x": 520, "y": 5000, "w": 1200, "h": 1700, "title": "AI Analyst" }
+  ],
+  "annotations": [
+    { "id": "brief-summary", "x": 0, "y": -140, "w": 480, "text": "MARKETPILOT AI — Phase 1 visual identity\nDark-mode-first institutional design system, the Command Center dashboard, the premium signal card, and the AI Analyst detail view. Illustrative data throughout." }
+  ],
+  "launch": { "view": "canvas" }
+}

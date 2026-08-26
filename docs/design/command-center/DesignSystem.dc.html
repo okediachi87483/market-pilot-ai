@@ -1,0 +1,276 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg-0:oklch(14% 0.014 250);
+      --bg-1:oklch(17% 0.016 250);
+      --bg-2:oklch(21% 0.018 250);
+      --bg-3:oklch(25% 0.02 250);
+      --border-subtle:oklch(28% 0.02 250);
+      --border-default:oklch(34% 0.022 250);
+      --text-primary:oklch(96% 0.006 250);
+      --text-secondary:oklch(72% 0.012 250);
+      --text-tertiary:oklch(52% 0.014 250);
+      --accent-teal:oklch(72% 0.11 200);
+      --accent-teal-dim:oklch(45% 0.08 200);
+      --accent-amber:oklch(75% 0.14 70);
+      --positive:oklch(70% 0.15 145);
+      --negative:oklch(66% 0.19 25);
+      --neutral-signal:oklch(62% 0.01 250);
+      --font-sans:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg-0); font-family:var(--font-sans); color:var(--text-primary); }
+    a { color:var(--accent-teal); text-decoration:none; }
+    a:hover { color:oklch(80% 0.11 200); }
+    .eyebrow { font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent-teal); }
+    .section { padding:40px 0; border-top:1px solid var(--border-subtle); }
+    .swatch-label { font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary); }
+  </style>
+</helmet>
+
+<div style="width:1200px; background:var(--bg-0); padding:56px; display:flex; flex-direction:column;">
+
+  <div style="display:flex; flex-direction:column; gap:6px; padding-bottom:32px;">
+    <div class="eyebrow">MARKETPILOT AI &middot; DESIGN SYSTEM</div>
+    <div style="font-size:32px; font-weight:600; letter-spacing:-0.01em;">Visual language reference</div>
+    <div style="font-size:14px; color:var(--text-secondary); max-width:640px; line-height:1.5;">Phase 1 draft. Dark-mode-first institutional palette for an AI market command center &mdash; precise, calm, data-dense. Illustrative values shown throughout.</div>
+  </div>
+
+  <!-- TYPOGRAPHY -->
+  <div class="section">
+    <div class="eyebrow" style="margin-bottom:16px;">Typography</div>
+    <div style="display:flex; flex-direction:column; gap:18px;">
+      <div style="display:flex; align-items:baseline; gap:24px; border-bottom:1px solid var(--border-subtle); padding-bottom:14px;">
+        <div style="width:180px; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);">display-xl / 44 / 600</div>
+        <div style="font-size:44px; font-weight:600; letter-spacing:-0.01em;">$128,402.19</div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:24px; border-bottom:1px solid var(--border-subtle); padding-bottom:14px;">
+        <div style="width:180px; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);">display-lg / 32 / 600</div>
+        <div style="font-size:32px; font-weight:600; letter-spacing:-0.01em;">Command Center</div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:24px; border-bottom:1px solid var(--border-subtle); padding-bottom:14px;">
+        <div style="width:180px; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);">heading-lg / 22 / 600</div>
+        <div style="font-size:22px; font-weight:600;">Active Signals</div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:24px; border-bottom:1px solid var(--border-subtle); padding-bottom:14px;">
+        <div style="width:180px; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);">heading-md / 17 / 600</div>
+        <div style="font-size:17px; font-weight:600;">NVDA &middot; NVIDIA Corp</div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:24px; border-bottom:1px solid var(--border-subtle); padding-bottom:14px;">
+        <div style="width:180px; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);">body / 14 / 400</div>
+        <div style="font-size:14px; color:var(--text-secondary); max-width:520px; line-height:1.5;">Conditions currently favor continuation of the recent uptrend, supported by broad participation.</div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:24px; border-bottom:1px solid var(--border-subtle); padding-bottom:14px;">
+        <div style="width:180px; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);">label / 11 / 600 / caps</div>
+        <div class="eyebrow">Risk Exposure</div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:24px;">
+        <div style="width:180px; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);">mono-data / 20 &amp; 12 / 500</div>
+        <div style="display:flex; align-items:baseline; gap:16px;">
+          <span style="font-family:var(--font-mono); font-size:20px; font-weight:500;">487.32</span>
+          <span style="font-family:var(--font-mono); font-size:12px; font-weight:500; color:var(--text-tertiary);">09:41:02 ET</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLOR -->
+  <div class="section">
+    <div class="eyebrow" style="margin-bottom:16px;">Color &middot; Dark (default)</div>
+    <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:16px;">
+      <div><div style="height:64px; border-radius:6px; background:var(--bg-0); border:1px solid var(--border-subtle);"></div><div class="swatch-label" style="margin-top:6px;">bg-0 &middot; base</div></div>
+      <div><div style="height:64px; border-radius:6px; background:var(--bg-1); border:1px solid var(--border-subtle);"></div><div class="swatch-label" style="margin-top:6px;">bg-1 &middot; surface</div></div>
+      <div><div style="height:64px; border-radius:6px; background:var(--bg-2); border:1px solid var(--border-subtle);"></div><div class="swatch-label" style="margin-top:6px;">bg-2 &middot; raised</div></div>
+      <div><div style="height:64px; border-radius:6px; background:var(--bg-3); border:1px solid var(--border-subtle);"></div><div class="swatch-label" style="margin-top:6px;">bg-3 &middot; overlay</div></div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:16px;">
+      <div><div style="height:64px; border-radius:6px; background:var(--text-primary);"></div><div class="swatch-label" style="margin-top:6px;">text-primary</div></div>
+      <div><div style="height:64px; border-radius:6px; background:var(--text-secondary);"></div><div class="swatch-label" style="margin-top:6px;">text-secondary</div></div>
+      <div><div style="height:64px; border-radius:6px; background:var(--text-tertiary);"></div><div class="swatch-label" style="margin-top:6px;">text-tertiary</div></div>
+      <div><div style="height:64px; border-radius:6px; background:var(--border-default);"></div><div class="swatch-label" style="margin-top:6px;">border-default</div></div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:16px;">
+      <div><div style="height:64px; border-radius:6px; background:var(--accent-teal);"></div><div class="swatch-label" style="margin-top:6px;">accent-teal &middot; interactive</div></div>
+      <div><div style="height:64px; border-radius:6px; background:var(--accent-amber);"></div><div class="swatch-label" style="margin-top:6px;">accent-amber &middot; AI / risk</div></div>
+      <div><div style="height:64px; border-radius:6px; background:var(--positive);"></div><div class="swatch-label" style="margin-top:6px;">positive &middot; bullish</div></div>
+      <div><div style="height:64px; border-radius:6px; background:var(--negative);"></div><div class="swatch-label" style="margin-top:6px;">negative &middot; bearish</div></div>
+    </div>
+
+    <div class="eyebrow" style="margin:28px 0 16px;">Color &middot; Light (alternate)</div>
+    <div style="background:oklch(98% 0.004 250); border:1px solid oklch(90% 0.006 250); border-radius:10px; padding:20px;">
+      <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:12px;">
+        <div><div style="height:56px; border-radius:6px; background:oklch(98% 0.004 250); border:1px solid oklch(90% 0.006 250);"></div><div class="swatch-label" style="margin-top:6px; color:oklch(56% 0.012 250);">bg-0</div></div>
+        <div><div style="height:56px; border-radius:6px; background:oklch(100% 0 0); border:1px solid oklch(90% 0.006 250);"></div><div class="swatch-label" style="margin-top:6px; color:oklch(56% 0.012 250);">bg-1</div></div>
+        <div><div style="height:56px; border-radius:6px; background:oklch(18% 0.012 250);"></div><div class="swatch-label" style="margin-top:6px; color:oklch(56% 0.012 250);">text-primary</div></div>
+        <div><div style="height:56px; border-radius:6px; background:oklch(38% 0.014 250);"></div><div class="swatch-label" style="margin-top:6px; color:oklch(56% 0.012 250);">text-secondary</div></div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px;">
+        <div><div style="height:56px; border-radius:6px; background:oklch(48% 0.11 200);"></div><div class="swatch-label" style="margin-top:6px; color:oklch(56% 0.012 250);">accent-teal</div></div>
+        <div><div style="height:56px; border-radius:6px; background:oklch(52% 0.14 70);"></div><div class="swatch-label" style="margin-top:6px; color:oklch(56% 0.012 250);">accent-amber</div></div>
+        <div><div style="height:56px; border-radius:6px; background:oklch(46% 0.15 145);"></div><div class="swatch-label" style="margin-top:6px; color:oklch(56% 0.012 250);">positive</div></div>
+        <div><div style="height:56px; border-radius:6px; background:oklch(50% 0.19 25);"></div><div class="swatch-label" style="margin-top:6px; color:oklch(56% 0.012 250);">negative</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPACING -->
+  <div class="section">
+    <div class="eyebrow" style="margin-bottom:16px;">Spacing scale</div>
+    <div style="display:flex; align-items:flex-end; gap:16px;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:4px; height:4px; background:var(--accent-teal);"></div><div class="swatch-label">4</div></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:8px; height:8px; background:var(--accent-teal);"></div><div class="swatch-label">8</div></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:12px; height:12px; background:var(--accent-teal);"></div><div class="swatch-label">12</div></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:16px; height:16px; background:var(--accent-teal);"></div><div class="swatch-label">16</div></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:20px; height:20px; background:var(--accent-teal);"></div><div class="swatch-label">20</div></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:24px; height:24px; background:var(--accent-teal);"></div><div class="swatch-label">24</div></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:32px; height:32px; background:var(--accent-teal);"></div><div class="swatch-label">32</div></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:40px; height:40px; background:var(--accent-teal);"></div><div class="swatch-label">40</div></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:56px; height:56px; background:var(--accent-teal);"></div><div class="swatch-label">56</div></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:8px;"><div style="width:72px; height:72px; background:var(--accent-teal);"></div><div class="swatch-label">72</div></div>
+    </div>
+  </div>
+
+  <!-- RADIUS / BORDERS / ELEVATION -->
+  <div class="section">
+    <div class="eyebrow" style="margin-bottom:16px;">Radius, border &amp; elevation</div>
+    <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="height:72px; background:var(--bg-1); border:1px solid var(--border-default); border-radius:4px;"></div>
+        <div class="swatch-label">radius-sm &middot; 4px &middot; chips, inputs</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="height:72px; background:var(--bg-1); border:1px solid var(--border-default); border-radius:6px;"></div>
+        <div class="swatch-label">radius-md &middot; 6px &middot; cards, buttons</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="height:72px; background:var(--bg-1); border:1px solid var(--border-default); border-radius:10px;"></div>
+        <div class="swatch-label">radius-lg &middot; 10px &middot; panels</div>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px; margin-top:16px;">
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="height:72px; background:var(--bg-0); border:1px solid var(--border-subtle); border-radius:8px;"></div>
+        <div class="swatch-label">base surface</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="height:72px; background:var(--bg-2); border:1px solid var(--border-default); border-radius:8px;"></div>
+        <div class="swatch-label">raised &middot; card / panel</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="height:72px; background:var(--bg-3); border:1px solid var(--border-default); border-radius:8px; box-shadow:0 8px 24px oklch(0% 0 0 / 0.35);"></div>
+        <div class="swatch-label">overlay &middot; modal / popover</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS LANGUAGE -->
+  <div class="section">
+    <div class="eyebrow" style="margin-bottom:6px;">Status &amp; signal language</div>
+    <div style="font-size:13px; color:var(--text-secondary); margin-bottom:20px; max-width:600px; line-height:1.5;">Every market state pairs a glyph, a color and a text label &mdash; never color alone. The AI sentiment instrument is the same component at every size.</div>
+    <div style="display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:8px; background:var(--bg-1); border:1px solid var(--border-subtle); border-radius:10px; padding:20px;">
+      <div style="display:flex; flex-direction:column; align-items:center;"><div style="width:100%; height:90px;"><dc-import name="SentimentInstrument" score="62" confidence="81" state="BULLISH" variant="compact" hint-size="140,90"></dc-import></div></div>
+      <div style="display:flex; flex-direction:column; align-items:center;"><div style="width:100%; height:90px;"><dc-import name="SentimentInstrument" score="-58" confidence="74" state="BEARISH" variant="compact" hint-size="140,90"></dc-import></div></div>
+      <div style="display:flex; flex-direction:column; align-items:center;"><div style="width:100%; height:90px;"><dc-import name="SentimentInstrument" score="4" confidence="52" state="NEUTRAL" variant="compact" hint-size="140,90"></dc-import></div></div>
+      <div style="display:flex; flex-direction:column; align-items:center;"><div style="width:100%; height:90px;"><dc-import name="SentimentInstrument" score="-20" confidence="66" state="HIGH_RISK" variant="compact" hint-size="140,90"></dc-import></div></div>
+      <div style="display:flex; flex-direction:column; align-items:center;"><div style="width:100%; height:90px;"><dc-import name="SentimentInstrument" score="0" confidence="0" state="MARKET_CLOSED" variant="compact" hint-size="140,90"></dc-import></div></div>
+      <div style="display:flex; flex-direction:column; align-items:center;"><div style="width:100%; height:90px;"><dc-import name="SentimentInstrument" score="12" confidence="38" state="VOLATILITY_EVENT" variant="compact" hint-size="140,90"></dc-import></div></div>
+    </div>
+  </div>
+
+  <!-- BUTTONS -->
+  <div class="section">
+    <div class="eyebrow" style="margin-bottom:16px;">Buttons</div>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <button style="font-family:var(--font-sans); font-size:13px; font-weight:600; color:var(--bg-0); background:var(--accent-teal); border:none; border-radius:6px; padding:10px 18px; cursor:pointer;">Primary action</button>
+      <button style="font-family:var(--font-sans); font-size:13px; font-weight:600; color:oklch(80% 0.11 200); background:oklch(72% 0.11 200 / 0.14); border:1px solid oklch(72% 0.11 200 / 0.35); border-radius:6px; padding:10px 18px; cursor:pointer;">Primary &middot; hover</button>
+      <button style="font-family:var(--font-sans); font-size:13px; font-weight:600; color:var(--text-primary); background:var(--bg-2); border:1px solid var(--border-default); border-radius:6px; padding:10px 18px; cursor:pointer;">Secondary</button>
+      <button style="font-family:var(--font-sans); font-size:13px; font-weight:600; color:var(--text-secondary); background:transparent; border:1px solid transparent; border-radius:6px; padding:10px 18px; cursor:pointer;">Ghost</button>
+      <button style="font-family:var(--font-sans); font-size:13px; font-weight:600; color:var(--negative); background:oklch(66% 0.19 25 / 0.12); border:1px solid oklch(66% 0.19 25 / 0.35); border-radius:6px; padding:10px 18px; cursor:pointer;">Destructive</button>
+      <button style="font-family:var(--font-sans); font-size:13px; font-weight:600; color:var(--text-tertiary); background:var(--bg-1); border:1px solid var(--border-subtle); border-radius:6px; padding:10px 18px; cursor:not-allowed;">Disabled</button>
+    </div>
+  </div>
+
+  <!-- INPUTS -->
+  <div class="section">
+    <div class="eyebrow" style="margin-bottom:16px;">Inputs</div>
+    <div style="display:flex; gap:16px; flex-wrap:wrap;">
+      <div style="display:flex; flex-direction:column; gap:6px; width:220px;">
+        <span class="swatch-label">default</span>
+        <input value="Search symbols" style="font-family:var(--font-sans); font-size:13px; color:var(--text-primary); background:var(--bg-1); border:1px solid var(--border-default); border-radius:4px; padding:9px 12px;">
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px; width:220px;">
+        <span class="swatch-label">focus</span>
+        <input value="NVDA" style="font-family:var(--font-sans); font-size:13px; color:var(--text-primary); background:var(--bg-1); border:1px solid var(--accent-teal); box-shadow:0 0 0 3px oklch(72% 0.11 200 / 0.18); border-radius:4px; padding:9px 12px;">
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px; width:220px;">
+        <span class="swatch-label">error</span>
+        <input value="12x" style="font-family:var(--font-sans); font-size:13px; color:var(--text-primary); background:var(--bg-1); border:1px solid var(--negative); border-radius:4px; padding:9px 12px;">
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px; width:220px;">
+        <span class="swatch-label">select</span>
+        <div style="font-family:var(--font-sans); font-size:13px; color:var(--text-primary); background:var(--bg-1); border:1px solid var(--border-default); border-radius:4px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;">1D <svg width="12" height="12" viewBox="0 0 20 20"><path d="M5 8 L10 13 L15 8" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="section">
+    <div class="eyebrow" style="margin-bottom:16px;">Table</div>
+    <div style="border:1px solid var(--border-subtle); border-radius:8px; overflow:hidden;">
+      <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr 1.2fr; padding:10px 16px; background:var(--bg-1); border-bottom:1px solid var(--border-subtle);">
+        <div class="swatch-label">SYMBOL</div><div class="swatch-label" style="text-align:right;">PRICE</div><div class="swatch-label" style="text-align:right;">CHG %</div><div class="swatch-label" style="text-align:right;">SIGNAL</div>
+      </div>
+      <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr 1.2fr; padding:12px 16px; border-bottom:1px solid var(--border-subtle); align-items:center;">
+        <div style="font-size:13px; font-weight:600;">NVDA</div>
+        <div style="font-family:var(--font-mono); font-size:13px; text-align:right;">128.44</div>
+        <div style="font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--positive);">+2.14%</div>
+        <div style="text-align:right; font-size:12px; color:var(--positive); font-weight:600;">LONG BIAS</div>
+      </div>
+      <div style="display:grid; grid-template-columns:1.4fr 1fr 1fr 1.2fr; padding:12px 16px; align-items:center;">
+        <div style="font-size:13px; font-weight:600;">TSLA</div>
+        <div style="font-family:var(--font-mono); font-size:13px; text-align:right;">241.08</div>
+        <div style="font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--negative);">-1.32%</div>
+        <div style="text-align:right; font-size:12px; color:var(--neutral-signal); font-weight:600;">NEUTRAL</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARDS -->
+  <div class="section" style="border-bottom:1px solid var(--border-subtle);">
+    <div class="eyebrow" style="margin-bottom:16px;">Cards</div>
+    <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:16px;">
+      <div style="background:var(--bg-1); border:1px solid var(--border-subtle); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:6px;">
+        <div class="swatch-label">WATCHLIST ITEM</div>
+        <div style="font-size:15px; font-weight:600;">AAPL</div>
+        <div style="font-family:var(--font-mono); font-size:13px; color:var(--positive);">+0.84%</div>
+      </div>
+      <div style="background:var(--bg-1); border:1px solid var(--border-subtle); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:6px;">
+        <div class="swatch-label">ALERT</div>
+        <div style="font-size:13px; line-height:1.4;">Daily profit target reached &middot; +2.1%</div>
+        <div class="swatch-label">09:12:47 ET</div>
+      </div>
+      <div style="background:var(--bg-2); border:1px solid var(--accent-teal); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:6px;">
+        <div class="swatch-label" style="color:var(--accent-teal);">SIGNAL &middot; SELECTED</div>
+        <div style="font-size:15px; font-weight:600;">MSFT &middot; LONG BIAS</div>
+        <div style="font-family:var(--font-mono); font-size:13px;">Confidence 74%</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

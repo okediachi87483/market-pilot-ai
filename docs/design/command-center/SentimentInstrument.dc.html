@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg-0:oklch(14% 0.014 250);
+      --bg-1:oklch(17% 0.016 250);
+      --bg-2:oklch(21% 0.018 250);
+      --border-subtle:oklch(28% 0.02 250);
+      --border-default:oklch(34% 0.022 250);
+      --text-primary:oklch(96% 0.006 250);
+      --text-secondary:oklch(72% 0.012 250);
+      --text-tertiary:oklch(52% 0.014 250);
+      --accent-teal:oklch(72% 0.11 200);
+      --accent-amber:oklch(75% 0.14 70);
+      --positive:oklch(70% 0.15 145);
+      --negative:oklch(66% 0.19 25);
+      --neutral-signal:oklch(62% 0.01 250);
+      --font-sans:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:transparent; font-family:var(--font-sans); }
+    @keyframes pulse-ring {
+      0%   { opacity: 0.55; transform: scale(1); }
+      70%  { opacity: 0; transform: scale(1.35); }
+      100% { opacity: 0; transform: scale(1.35); }
+    }
+    .pulse { animation: pulse-ring 1.8s ease-out infinite; transform-origin: 120px 130px; }
+  </style>
+</helmet>
+
+<div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; gap:4px; font-family:var(--font-sans); color:var(--text-primary);">
+
+  <svg viewBox="0 0 240 160" style="width:78%; max-width:260px; overflow:visible;">
+    <path d="M20,130 A100,100 0 0 1 70,43.4" fill="none" stroke="var(--negative)" stroke-width="10" stroke-linecap="round" opacity="0.55"></path>
+    <path d="M70,43.4 A100,100 0 0 1 170,43.4" fill="none" stroke="var(--neutral-signal)" stroke-width="10" stroke-linecap="round" opacity="0.4"></path>
+    <path d="M170,43.4 A100,100 0 0 1 220,130" fill="none" stroke="var(--positive)" stroke-width="10" stroke-linecap="round" opacity="0.55"></path>
+
+    <sc-if value="{{isVolatility}}" hint-placeholder-val="{{false}}">
+      <circle class="pulse" cx="120" cy="130" r="14" fill="none" stroke="var(--accent-amber)" stroke-width="3"></circle>
+    </sc-if>
+
+    <circle cx="120" cy="130" r="6" fill="var(--bg-1)" stroke="var(--border-default)" stroke-width="1.5"></circle>
+    <line x1="120" y1="130" x2="{{needleX}}" y2="{{needleY}}" stroke="{{stateColor}}" stroke-width="3" stroke-linecap="round" style="opacity:{{needleOpacity}}"></line>
+    <circle cx="120" cy="130" r="3" fill="{{stateColor}}" style="opacity:{{needleOpacity}}"></circle>
+  </svg>
+
+  <div style="display:flex; align-items:center; gap:6px; color:{{stateColor}};">
+    <sc-if value="{{isBullish}}" hint-placeholder-val="{{true}}">
+      <svg width="16" height="16" viewBox="0 0 20 20"><path d="M10 4 L17 15 L3 15 Z" fill="currentColor"></path></svg>
+    </sc-if>
+    <sc-if value="{{isBearish}}" hint-placeholder-val="{{false}}">
+      <svg width="16" height="16" viewBox="0 0 20 20"><path d="M10 16 L3 5 L17 5 Z" fill="currentColor"></path></svg>
+    </sc-if>
+    <sc-if value="{{isNeutral}}" hint-placeholder-val="{{false}}">
+      <svg width="16" height="16" viewBox="0 0 20 20"><rect x="4" y="9" width="12" height="2" rx="1" fill="currentColor"></rect></svg>
+    </sc-if>
+    <sc-if value="{{isHighRisk}}" hint-placeholder-val="{{false}}">
+      <svg width="16" height="16" viewBox="0 0 20 20"><path d="M10 2 L18 10 L10 18 L2 10 Z" fill="none" stroke="currentColor" stroke-width="1.5"></path><rect x="9" y="6" width="2" height="6" fill="currentColor"></rect><rect x="9" y="13.5" width="2" height="2" fill="currentColor"></rect></svg>
+    </sc-if>
+    <sc-if value="{{isClosed}}" hint-placeholder-val="{{false}}">
+      <svg width="16" height="16" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M10 6 L10 10 L13 12" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg>
+    </sc-if>
+    <sc-if value="{{isVolatility}}" hint-placeholder-val="{{false}}">
+      <svg width="16" height="16" viewBox="0 0 20 20"><path d="M2 10 L6 10 L8 4 L11 16 L13 10 L18 10" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg>
+    </sc-if>
+    <span style="font-size:15px; font-weight:600; letter-spacing:0.04em;">{{stateLabel}}</span>
+  </div>
+
+  <sc-if value="{{isCompact}}" hint-placeholder-val="{{false}}">
+    <div></div>
+  </sc-if>
+  <sc-if value="{{showDetail}}" hint-placeholder-val="{{true}}">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:2px;">
+      <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary);">SCORE <span style="color:var(--text-primary); font-weight:500;">{{scoreSign}}{{score}}</span> &nbsp;·&nbsp; CONFIDENCE <span style="color:var(--text-primary); font-weight:500;">{{confidence}}%</span></div>
+      <div style="font-size:11px; color:var(--text-tertiary); letter-spacing:0.02em;">AS OF {{asOf}}</div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{
+  "score": {"editor":"range","default":58,"min":-100,"max":100,"step":1,"section":"Sentiment"},
+  "confidence": {"editor":"range","default":81,"min":0,"max":100,"step":1,"section":"Sentiment"},
+  "state": {"editor":"enum","default":"BULLISH","options":["BULLISH","BEARISH","NEUTRAL","HIGH_RISK","MARKET_CLOSED","VOLATILITY_EVENT"],"section":"Sentiment"},
+  "variant": {"editor":"enum","default":"hero","options":["hero","compact"],"section":"Sentiment"},
+  "asOf": {"editor":"text","default":"09:41:02 ET","section":"Sentiment"}
+}'>
+class Component extends DCLogic {
+  renderVals() {
+    const score = Math.max(-100, Math.min(100, Number(this.props.score ?? 58)));
+    const confidence = Math.max(0, Math.min(100, Number(this.props.confidence ?? 81)));
+    const state = this.props.state ?? 'BULLISH';
+    const variant = this.props.variant ?? 'hero';
+    const asOf = this.props.asOf ?? '09:41:02 ET';
+
+    const cx = 120, cy = 130, needleLen = 80;
+    const angle = 180 - ((score + 100) / 200) * 180;
+    const rad = angle * Math.PI / 180;
+    const needleX = (cx + needleLen * Math.cos(rad)).toFixed(1);
+    const needleY = (cy - needleLen * Math.sin(rad)).toFixed(1);
+
+    const meta = {
+      BULLISH:          { label: 'BULLISH',          color: 'var(--positive)' },
+      BEARISH:          { label: 'BEARISH',          color: 'var(--negative)' },
+      NEUTRAL:          { label: 'NEUTRAL',          color: 'var(--neutral-signal)' },
+      HIGH_RISK:        { label: 'HIGH RISK',        color: 'var(--accent-amber)' },
+      MARKET_CLOSED:    { label: 'MARKET CLOSED',    color: 'var(--text-tertiary)' },
+      VOLATILITY_EVENT: { label: 'VOLATILITY EVENT', color: 'var(--accent-amber)' },
+    }[state] || { label: 'NEUTRAL', color: 'var(--neutral-signal)' };
+
+    return {
+      score,
+      confidence,
+      asOf,
+      scoreSign: score > 0 ? '+' : '',
+      needleX, needleY,
+      needleOpacity: state === 'MARKET_CLOSED' ? 0.25 : 1,
+      stateLabel: meta.label,
+      stateColor: meta.color,
+      isBullish: state === 'BULLISH',
+      isBearish: state === 'BEARISH',
+      isNeutral: state === 'NEUTRAL',
+      isHighRisk: state === 'HIGH_RISK',
+      isClosed: state === 'MARKET_CLOSED',
+      isVolatility: state === 'VOLATILITY_EVENT',
+      isCompact: variant === 'compact',
+      showDetail: variant !== 'compact',
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+npm-debug.log*
+next-env.d.ts
+
+# --- Python / FastAPI ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Env / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Docker ---
+*.pid
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Build artifacts ---
+dist/
+build/
+coverage/
+
+# --- Design canvas seeded output (regenerated from the .dc.html sources
+# via the design skill's seed-canvas.mjs; the source files are what's
+# tracked, not the ~2.5MB bundled editor payload) ---
+docs/design/**/*.html
+!docs/**/*.dc.html

@@ -1,0 +1,328 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg-0:oklch(14% 0.014 250);
+      --bg-1:oklch(17% 0.016 250);
+      --bg-2:oklch(21% 0.018 250);
+      --bg-3:oklch(25% 0.02 250);
+      --border-subtle:oklch(28% 0.02 250);
+      --border-default:oklch(34% 0.022 250);
+      --text-primary:oklch(96% 0.006 250);
+      --text-secondary:oklch(72% 0.012 250);
+      --text-tertiary:oklch(52% 0.014 250);
+      --accent-teal:oklch(72% 0.11 200);
+      --accent-amber:oklch(75% 0.14 70);
+      --positive:oklch(70% 0.15 145);
+      --negative:oklch(66% 0.19 25);
+      --neutral-signal:oklch(62% 0.01 250);
+      --font-sans:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg-0); font-family:var(--font-sans); color:var(--text-primary); }
+    a { color:var(--accent-teal); text-decoration:none; }
+    .eyebrow { font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-tertiary); }
+    .card { background:var(--bg-1); border:1px solid var(--border-subtle); border-radius:10px; }
+    .navlink { font-size:13px; color:var(--text-secondary); padding:6px 2px; border-bottom:2px solid transparent; }
+    .navlink.active { color:var(--text-primary); border-bottom-color:var(--accent-teal); font-weight:500; }
+    @keyframes live-dot { 0%,100% { opacity:1; } 50% { opacity:0.35; } }
+    .live { animation: live-dot 2s ease-in-out infinite; }
+  </style>
+</helmet>
+
+<div style="width:1440px; background:var(--bg-0); display:flex; flex-direction:column; min-height:100%;">
+
+  <!-- TOP BAR -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:0 32px; height:64px; border-bottom:1px solid var(--border-subtle); flex-shrink:0;">
+    <div style="display:flex; align-items:center; gap:28px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M2 15 L7 8 L11 12 L18 3" fill="none" stroke="var(--accent-teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span style="font-size:15px; font-weight:700; letter-spacing:0.01em;">MARKETPILOT</span>
+        <span style="font-family:var(--font-mono); font-size:10px; font-weight:600; color:var(--accent-teal); background:oklch(72% 0.11 200 / 0.14); border-radius:4px; padding:2px 6px;">AI</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; padding:6px 12px; background:var(--bg-1); border:1px solid var(--border-subtle); border-radius:20px;">
+        <span class="live" style="width:6px; height:6px; border-radius:50%; background:var(--positive); display:inline-block;"></span>
+        <span style="font-size:12px; font-weight:600;">US EQUITIES &middot; OPEN</span>
+        <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);">09:41:02 ET</span>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:22px;">
+      <span class="navlink active">Command Center</span>
+      <span class="navlink">Markets</span>
+      <span class="navlink">Watchlist</span>
+      <span class="navlink">Signals</span>
+      <span class="navlink">AI Analyst</span>
+      <span class="navlink">Portfolio</span>
+      <span class="navlink">Risk</span>
+      <span class="navlink">Alerts</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="width:220px; padding:7px 12px; background:var(--bg-1); border:1px solid var(--border-subtle); border-radius:6px; font-size:12px; color:var(--text-tertiary);">Search symbols&hellip;</div>
+      <div style="width:30px; height:30px; border-radius:50%; background:var(--bg-2); border:1px solid var(--border-default);"></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div style="padding:24px 32px 48px; display:flex; flex-direction:column; gap:20px;">
+
+    <!-- ROW 1: assessment / portfolio / risk -->
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px;">
+
+      <div class="card" style="padding:20px; display:flex; flex-direction:column; align-items:center; gap:8px;">
+        <div style="display:flex; justify-content:space-between; width:100%;">
+          <div class="eyebrow">AI Market Assessment</div>
+          <div class="eyebrow" style="color:var(--text-tertiary);">MOCK DATA</div>
+        </div>
+        <div style="width:100%; height:180px; display:flex; align-items:center; justify-content:center;">
+          <dc-import name="SentimentInstrument" score="58" confidence="81" state="BULLISH" as-of="09:41:02 ET" variant="hero" hint-size="260,180"></dc-import>
+        </div>
+        <div style="font-size:12px; color:var(--text-secondary); text-align:center; line-height:1.5; padding:0 6px;">Conditions currently favor continuation of the broad uptrend, supported by breadth and controlled volatility. Not a guarantee.</div>
+      </div>
+
+      <div class="card" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+        <div class="eyebrow">Portfolio Performance</div>
+        <div>
+          <div style="font-family:var(--font-mono); font-size:32px; font-weight:600; letter-spacing:-0.01em;">$128,402.19</div>
+          <div style="display:flex; gap:10px; margin-top:4px;">
+            <span style="font-family:var(--font-mono); font-size:13px; color:var(--positive); font-weight:500;">+$1,842.60 today</span>
+            <span style="font-family:var(--font-mono); font-size:13px; color:var(--text-tertiary);">+18.4% total return</span>
+          </div>
+        </div>
+        <svg viewBox="0 0 280 60" style="width:100%; height:60px;">
+          <polyline points="0,44 30,40 60,42 90,30 120,34 150,20 180,24 210,14 240,18 280,6" fill="none" stroke="var(--positive)" stroke-width="2"></polyline>
+        </svg>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; border-top:1px solid var(--border-subtle); padding-top:12px;">
+          <div><div class="eyebrow" style="font-size:10px;">CASH</div><div style="font-family:var(--font-mono); font-size:13px; margin-top:2px;">$22,140</div></div>
+          <div><div class="eyebrow" style="font-size:10px;">EXPOSURE</div><div style="font-family:var(--font-mono); font-size:13px; margin-top:2px;">62%</div></div>
+          <div><div class="eyebrow" style="font-size:10px;">WIN RATE</div><div style="font-family:var(--font-mono); font-size:13px; margin-top:2px;">64%</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:20px; display:flex; flex-direction:column; gap:16px;">
+        <div class="eyebrow">Risk Exposure</div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px;"><span style="color:var(--text-secondary);">Portfolio exposure</span><span style="font-family:var(--font-mono);">62% / 80%</span></div>
+            <div style="height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:77%; height:100%; background:var(--accent-teal); border-radius:3px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px;"><span style="color:var(--text-secondary);">Daily loss used</span><span style="font-family:var(--font-mono);">0.4% / 3%</span></div>
+            <div style="height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:13%; height:100%; background:var(--positive); border-radius:3px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px;"><span style="color:var(--text-secondary);">Drawdown</span><span style="font-family:var(--font-mono);">3.2% / 8%</span></div>
+            <div style="height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:40%; height:100%; background:var(--accent-amber); border-radius:3px;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px;"><span style="color:var(--text-secondary);">Concurrent positions</span><span style="font-family:var(--font-mono);">4 / 6</span></div>
+            <div style="height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:66%; height:100%; background:var(--accent-teal); border-radius:3px;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 2: watchlist / active signals -->
+    <div style="display:grid; grid-template-columns:2fr 1fr; gap:20px;">
+      <div class="card" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="eyebrow">Watchlist &middot; Live Prices</div>
+          <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-tertiary);">MOCK DATA</span>
+        </div>
+        <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1.3fr 1fr; padding:0 4px 8px; border-bottom:1px solid var(--border-subtle);">
+          <div class="eyebrow" style="font-size:10px;">SYMBOL</div>
+          <div class="eyebrow" style="font-size:10px; text-align:right;">PRICE</div>
+          <div class="eyebrow" style="font-size:10px; text-align:right;">CHG %</div>
+          <div class="eyebrow" style="font-size:10px; text-align:right;">SIGNAL</div>
+          <div class="eyebrow" style="font-size:10px; text-align:right;">VOL vs AVG</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1.3fr 1fr; align-items:center; padding:6px 4px; border-bottom:1px solid var(--border-subtle);">
+          <div><div style="font-size:13px; font-weight:600;">NVDA</div><div style="font-size:10px; color:var(--text-tertiary);">Equity</div></div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right;">128.44</div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--positive);">+2.14%</div>
+          <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11px; color:var(--positive); font-weight:600;"><svg width="9" height="9" viewBox="0 0 20 20"><path d="M10 4 L17 15 L3 15 Z" fill="currentColor"></path></svg>LONG BIAS</div>
+          <div style="display:flex; justify-content:flex-end;"><div style="width:44px; height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:80%; height:100%; background:var(--accent-teal); border-radius:3px;"></div></div></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1.3fr 1fr; align-items:center; padding:6px 4px; border-bottom:1px solid var(--border-subtle);">
+          <div><div style="font-size:13px; font-weight:600;">AAPL</div><div style="font-size:10px; color:var(--text-tertiary);">Equity</div></div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right;">191.02</div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--positive);">+0.84%</div>
+          <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11px; color:var(--neutral-signal); font-weight:600;"><svg width="9" height="9" viewBox="0 0 20 20"><rect x="4" y="9" width="12" height="2" rx="1" fill="currentColor"></rect></svg>NEUTRAL</div>
+          <div style="display:flex; justify-content:flex-end;"><div style="width:44px; height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:45%; height:100%; background:var(--accent-teal); border-radius:3px;"></div></div></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1.3fr 1fr; align-items:center; padding:6px 4px; border-bottom:1px solid var(--border-subtle);">
+          <div><div style="font-size:13px; font-weight:600;">MSFT</div><div style="font-size:10px; color:var(--text-tertiary);">Equity</div></div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right;">412.66</div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--positive);">+1.02%</div>
+          <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11px; color:var(--positive); font-weight:600;"><svg width="9" height="9" viewBox="0 0 20 20"><path d="M10 4 L17 15 L3 15 Z" fill="currentColor"></path></svg>LONG BIAS</div>
+          <div style="display:flex; justify-content:flex-end;"><div style="width:44px; height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:60%; height:100%; background:var(--accent-teal); border-radius:3px;"></div></div></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1.3fr 1fr; align-items:center; padding:6px 4px; border-bottom:1px solid var(--border-subtle);">
+          <div><div style="font-size:13px; font-weight:600;">BTC-USD</div><div style="font-size:10px; color:var(--text-tertiary);">Crypto</div></div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right;">60,410</div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--negative);">-0.98%</div>
+          <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11px; color:var(--accent-amber); font-weight:600;"><svg width="9" height="9" viewBox="0 0 20 20"><path d="M10 3 L17 10 L10 17 L3 10 Z" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>HIGH RISK</div>
+          <div style="display:flex; justify-content:flex-end;"><div style="width:44px; height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:92%; height:100%; background:var(--accent-teal); border-radius:3px;"></div></div></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1.3fr 1fr; align-items:center; padding:6px 4px; border-bottom:1px solid var(--border-subtle);">
+          <div><div style="font-size:13px; font-weight:600;">EUR/USD</div><div style="font-size:10px; color:var(--text-tertiary);">Forex</div></div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right;">1.0842</div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--text-secondary);">+0.06%</div>
+          <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11px; color:var(--neutral-signal); font-weight:600;"><svg width="9" height="9" viewBox="0 0 20 20"><rect x="4" y="9" width="12" height="2" rx="1" fill="currentColor"></rect></svg>NEUTRAL</div>
+          <div style="display:flex; justify-content:flex-end;"><div style="width:44px; height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:30%; height:100%; background:var(--accent-teal); border-radius:3px;"></div></div></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1.6fr 1fr 1fr 1.3fr 1fr; align-items:center; padding:6px 4px;">
+          <div><div style="font-size:13px; font-weight:600;">TSLA</div><div style="font-size:10px; color:var(--text-tertiary);">Equity</div></div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right;">241.08</div>
+          <div style="font-family:var(--font-mono); font-size:13px; text-align:right; color:var(--negative);">-1.32%</div>
+          <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11px; color:var(--negative); font-weight:600;"><svg width="9" height="9" viewBox="0 0 20 20"><path d="M10 16 L3 5 L17 5 Z" fill="currentColor"></path></svg>SHORT BIAS</div>
+          <div style="display:flex; justify-content:flex-end;"><div style="width:44px; height:5px; background:var(--bg-3); border-radius:3px;"><div style="width:70%; height:100%; background:var(--accent-teal); border-radius:3px;"></div></div></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:20px; display:flex; flex-direction:column; gap:12px;">
+        <div class="eyebrow">Active Signals</div>
+
+        <div style="display:flex; flex-direction:column; gap:6px; padding:12px; background:var(--bg-2); border:1px solid var(--border-subtle); border-radius:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:14px; font-weight:600;">NVDA</span>
+            <span style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--positive);"><svg width="10" height="10" viewBox="0 0 20 20"><path d="M10 4 L17 15 L3 15 Z" fill="currentColor"></path></svg>LONG BIAS</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);"><span>Confidence</span><span style="color:var(--text-primary);">82%</span></div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:6px; padding:12px; background:var(--bg-2); border:1px solid var(--border-subtle); border-radius:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:14px; font-weight:600;">MSFT</span>
+            <span style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--positive);"><svg width="10" height="10" viewBox="0 0 20 20"><path d="M10 4 L17 15 L3 15 Z" fill="currentColor"></path></svg>LONG BIAS</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);"><span>Confidence</span><span style="color:var(--text-primary);">74%</span></div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:6px; padding:12px; background:var(--bg-2); border:1px solid var(--border-subtle); border-radius:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:14px; font-weight:600;">TSLA</span>
+            <span style="display:flex; align-items:center; gap:4px; font-size:11px; font-weight:600; color:var(--negative);"><svg width="10" height="10" viewBox="0 0 20 20"><path d="M10 16 L3 5 L17 5 Z" fill="currentColor"></path></svg>SHORT BIAS</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:11px; color:var(--text-tertiary);"><span>Confidence</span><span style="color:var(--text-primary);">57%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 3: positions / alerts -->
+    <div style="display:grid; grid-template-columns:2fr 1fr; gap:20px;">
+      <div class="card" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+        <div class="eyebrow">Open Paper Positions</div>
+        <div style="display:grid; grid-template-columns:1fr 0.8fr 0.8fr 1fr 1fr 1.2fr 1.2fr; padding:0 4px 8px; border-bottom:1px solid var(--border-subtle);">
+          <div class="eyebrow" style="font-size:10px;">SYMBOL</div>
+          <div class="eyebrow" style="font-size:10px;">SIDE</div>
+          <div class="eyebrow" style="font-size:10px; text-align:right;">QTY</div>
+          <div class="eyebrow" style="font-size:10px; text-align:right;">ENTRY</div>
+          <div class="eyebrow" style="font-size:10px; text-align:right;">CURRENT</div>
+          <div class="eyebrow" style="font-size:10px; text-align:right;">UNREAL. P/L</div>
+          <div class="eyebrow" style="font-size:10px; text-align:right;">RISK</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 0.8fr 0.8fr 1fr 1fr 1.2fr 1.2fr; align-items:center; padding:6px 4px; border-bottom:1px solid var(--border-subtle); font-size:13px;">
+          <div style="font-weight:600;">NVDA</div>
+          <div style="color:var(--positive);">LONG</div>
+          <div style="font-family:var(--font-mono); text-align:right;">40</div>
+          <div style="font-family:var(--font-mono); text-align:right;">118.20</div>
+          <div style="font-family:var(--font-mono); text-align:right;">128.44</div>
+          <div style="font-family:var(--font-mono); text-align:right; color:var(--positive);">+$409.60</div>
+          <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11px; color:var(--text-tertiary);"><svg width="9" height="9" viewBox="0 0 20 20"><path d="M4 10 L8 14 L16 5" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg>Within limits</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 0.8fr 0.8fr 1fr 1fr 1.2fr 1.2fr; align-items:center; padding:6px 4px; border-bottom:1px solid var(--border-subtle); font-size:13px;">
+          <div style="font-weight:600;">AAPL</div>
+          <div style="color:var(--positive);">LONG</div>
+          <div style="font-family:var(--font-mono); text-align:right;">25</div>
+          <div style="font-family:var(--font-mono); text-align:right;">189.10</div>
+          <div style="font-family:var(--font-mono); text-align:right;">191.02</div>
+          <div style="font-family:var(--font-mono); text-align:right; color:var(--positive);">+$48.00</div>
+          <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11px; color:var(--text-tertiary);"><svg width="9" height="9" viewBox="0 0 20 20"><path d="M4 10 L8 14 L16 5" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg>Within limits</div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 0.8fr 0.8fr 1fr 1fr 1.2fr 1.2fr; align-items:center; padding:6px 4px; font-size:13px;">
+          <div style="font-weight:600;">BTC-USD</div>
+          <div style="color:var(--positive);">LONG</div>
+          <div style="font-family:var(--font-mono); text-align:right;">0.42</div>
+          <div style="font-family:var(--font-mono); text-align:right;">61,200</div>
+          <div style="font-family:var(--font-mono); text-align:right;">60,410</div>
+          <div style="font-family:var(--font-mono); text-align:right; color:var(--negative);">-$331.80</div>
+          <div style="display:flex; justify-content:flex-end; align-items:center; gap:4px; font-size:11px; color:var(--accent-amber);"><svg width="9" height="9" viewBox="0 0 20 20"><path d="M10 3 L17 10 L10 17 L3 10 Z" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>Near stop-loss</div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+        <div class="eyebrow">Recent Alerts</div>
+        <div style="display:flex; gap:10px;">
+          <svg width="16" height="16" viewBox="0 0 20 20" style="flex-shrink:0; margin-top:2px; color:var(--positive);"><path d="M10 2 L18 10 L10 18 L2 10 Z" fill="none" stroke="currentColor" stroke-width="1.5"></path><path d="M6.5 10 L9 12.5 L13.5 7.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg>
+          <div><div style="font-size:12px; line-height:1.4;">Daily profit target reached &middot; +2.1%</div><div style="font-family:var(--font-mono); font-size:10px; color:var(--text-tertiary); margin-top:2px;">09:12:47 ET</div></div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <svg width="16" height="16" viewBox="0 0 20 20" style="flex-shrink:0; margin-top:2px; color:var(--accent-amber);"><path d="M10 2 L18 10 L10 18 L2 10 Z" fill="none" stroke="currentColor" stroke-width="1.5"></path><rect x="9" y="6" width="2" height="6" fill="currentColor"></rect><rect x="9" y="13.5" width="2" height="2" fill="currentColor"></rect></svg>
+          <div><div style="font-size:12px; line-height:1.4;">NVDA approaching invalidation level &middot; $118.40</div><div style="font-family:var(--font-mono); font-size:10px; color:var(--text-tertiary); margin-top:2px;">09:35:10 ET</div></div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <svg width="16" height="16" viewBox="0 0 20 20" style="flex-shrink:0; margin-top:2px; color:var(--text-tertiary);"><circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M10 6 L10 10 L13 12" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg>
+          <div><div style="font-size:12px; line-height:1.4;">Portfolio drawdown 3.2% &mdash; below threshold</div><div style="font-family:var(--font-mono); font-size:10px; color:var(--text-tertiary); margin-top:2px;">08:50:03 ET</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 4: activity timeline -->
+    <div class="card" style="padding:24px 32px;">
+      <div class="eyebrow" style="margin-bottom:24px;">Market Activity Timeline</div>
+      <div style="position:relative;">
+        <div style="position:absolute; top:5px; left:0; right:0; height:1px; background:var(--border-default);"></div>
+        <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px;">
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="width:10px; height:10px; border-radius:50%; background:var(--bg-0); border:2px solid var(--text-tertiary);"></div>
+            <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-tertiary);">08:30 ET</div>
+            <div style="font-size:12px; line-height:1.4;">Market opened</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="width:10px; height:10px; border-radius:50%; background:var(--bg-0); border:2px solid var(--accent-teal);"></div>
+            <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-tertiary);">08:47 ET</div>
+            <div style="font-size:12px; line-height:1.4;">Signal generated &middot; NVDA LONG BIAS</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="width:10px; height:10px; border-radius:50%; background:var(--bg-0); border:2px solid var(--accent-teal);"></div>
+            <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-tertiary);">09:05 ET</div>
+            <div style="font-size:12px; line-height:1.4;">AI analysis updated &middot; MSFT</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="width:10px; height:10px; border-radius:50%; background:var(--bg-0); border:2px solid var(--positive);"></div>
+            <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-tertiary);">09:12 ET</div>
+            <div style="font-size:12px; line-height:1.4;">Alert &middot; daily profit target reached</div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <div style="width:10px; height:10px; border-radius:50%; background:var(--bg-0); border:2px solid var(--text-secondary);"></div>
+            <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-tertiary);">09:35 ET</div>
+            <div style="font-size:12px; line-height:1.4;">Paper order filled &middot; NVDA +40 (simulated)</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

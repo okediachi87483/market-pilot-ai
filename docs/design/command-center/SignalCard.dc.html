@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --bg-0:oklch(14% 0.014 250);
+      --bg-1:oklch(17% 0.016 250);
+      --bg-2:oklch(21% 0.018 250);
+      --border-subtle:oklch(28% 0.02 250);
+      --border-default:oklch(34% 0.022 250);
+      --text-primary:oklch(96% 0.006 250);
+      --text-secondary:oklch(72% 0.012 250);
+      --text-tertiary:oklch(52% 0.014 250);
+      --accent-teal:oklch(72% 0.11 200);
+      --accent-amber:oklch(75% 0.14 70);
+      --positive:oklch(70% 0.15 145);
+      --negative:oklch(66% 0.19 25);
+      --font-sans:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --font-mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg-0); font-family:var(--font-sans); color:var(--text-primary); }
+    .eyebrow { font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-tertiary); }
+    .row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--border-subtle); }
+    .row:last-child { border-bottom:none; }
+  </style>
+</helmet>
+
+<div style="width:420px; background:var(--bg-0); padding:24px; display:flex; flex-direction:column; gap:20px;">
+
+  <div class="eyebrow">Collapsed state</div>
+
+  <div style="background:var(--bg-1); border:1px solid var(--border-subtle); border-radius:10px; padding:20px; display:flex; flex-direction:column; gap:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div style="font-size:20px; font-weight:700;">NVDA</div>
+        <div style="font-size:12px; color:var(--text-tertiary);">NVIDIA Corp &middot; Equity</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:5px; background:oklch(70% 0.15 145 / 0.14); border:1px solid oklch(70% 0.15 145 / 0.35); border-radius:20px; padding:5px 10px;">
+        <svg width="11" height="11" viewBox="0 0 20 20"><path d="M10 4 L17 15 L3 15 Z" fill="var(--positive)"></path></svg>
+        <span style="font-size:11px; font-weight:700; color:var(--positive); letter-spacing:0.02em;">LONG BIAS</span>
+      </div>
+    </div>
+
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:baseline;">
+        <span class="eyebrow">Confidence</span>
+        <span style="font-family:var(--font-mono); font-size:18px; font-weight:600;">82%</span>
+      </div>
+      <div style="height:5px; background:var(--bg-2); border-radius:3px; margin-top:8px;"><div style="width:82%; height:100%; background:var(--accent-teal); border-radius:3px;"></div></div>
+    </div>
+
+    <div style="display:flex; flex-direction:column;">
+      <div class="row"><span style="font-size:13px; color:var(--text-secondary);">Momentum</span><span style="font-size:13px; font-weight:500;">Strong</span></div>
+      <div class="row"><span style="font-size:13px; color:var(--text-secondary);">Volume</span><span style="font-size:13px; font-weight:500;">Above average</span></div>
+      <div class="row"><span style="font-size:13px; color:var(--text-secondary);">Trend</span><span style="font-size:13px; font-weight:500;">Bullish</span></div>
+      <div class="row"><span style="font-size:13px; color:var(--text-secondary);">Risk</span><span style="font-size:13px; font-weight:500; color:var(--accent-amber);">Moderate</span></div>
+      <div class="row"><span style="font-size:13px; color:var(--text-secondary);">Invalidation</span><span style="font-family:var(--font-mono); font-size:13px; font-weight:500;">$118.40</span></div>
+      <div class="row"><span style="font-size:13px; color:var(--text-secondary);">Target zone</span><span style="font-family:var(--font-mono); font-size:13px; font-weight:500;">$134 &ndash; $141</span></div>
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:center; gap:6px; padding-top:4px; color:var(--accent-teal); font-size:12px; font-weight:600; cursor:pointer;">
+      View reasoning
+      <svg width="11" height="11" viewBox="0 0 20 20"><path d="M5 8 L10 13 L15 8" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg>
+    </div>
+  </div>
+
+  <div class="eyebrow">Expanded state &middot; reasoning</div>
+
+  <div style="background:var(--bg-1); border:1px solid var(--accent-teal); border-radius:10px; padding:20px; display:flex; flex-direction:column; gap:18px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div>
+        <div style="font-size:20px; font-weight:700;">NVDA</div>
+        <div style="font-size:12px; color:var(--text-tertiary);">NVIDIA Corp &middot; Equity</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:5px; background:oklch(70% 0.15 145 / 0.14); border:1px solid oklch(70% 0.15 145 / 0.35); border-radius:20px; padding:5px 10px;">
+        <svg width="11" height="11" viewBox="0 0 20 20"><path d="M10 4 L17 15 L3 15 Z" fill="var(--positive)"></path></svg>
+        <span style="font-size:11px; font-weight:700; color:var(--positive); letter-spacing:0.02em;">LONG BIAS &middot; 82%</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="eyebrow" style="margin-bottom:8px; color:var(--positive);">Supporting indicators</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; gap:8px; font-size:12px; line-height:1.5; color:var(--text-secondary);"><svg width="13" height="13" viewBox="0 0 20 20" style="flex-shrink:0; margin-top:2px; color:var(--positive);"><path d="M4 10 L8 14 L16 5" fill="none" stroke="currentColor" stroke-width="2"></path></svg>50-day moving average crossed above the 200-day &mdash; a classic trend-confirmation signal.</div>
+        <div style="display:flex; gap:8px; font-size:12px; line-height:1.5; color:var(--text-secondary);"><svg width="13" height="13" viewBox="0 0 20 20" style="flex-shrink:0; margin-top:2px; color:var(--positive);"><path d="M4 10 L8 14 L16 5" fill="none" stroke="currentColor" stroke-width="2"></path></svg>Volume running 1.8&times; the 30-day average, indicating conviction behind the move.</div>
+        <div style="display:flex; gap:8px; font-size:12px; line-height:1.5; color:var(--text-secondary);"><svg width="13" height="13" viewBox="0 0 20 20" style="flex-shrink:0; margin-top:2px; color:var(--positive);"><path d="M4 10 L8 14 L16 5" fill="none" stroke="currentColor" stroke-width="2"></path></svg>RSI(14) at 61 &mdash; momentum is elevated without overbought extremes.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="eyebrow" style="margin-bottom:8px; color:var(--accent-amber);">Contradicting indicators</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; gap:8px; font-size:12px; line-height:1.5; color:var(--text-secondary);"><svg width="13" height="13" viewBox="0 0 20 20" style="flex-shrink:0; margin-top:2px; color:var(--accent-amber);"><path d="M10 3 L17 16 L3 16 Z" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg>Price is extended roughly 8% above the 20-day average, raising pullback risk.</div>
+        <div style="display:flex; gap:8px; font-size:12px; line-height:1.5; color:var(--text-secondary);"><svg width="13" height="13" viewBox="0 0 20 20" style="flex-shrink:0; margin-top:2px; color:var(--accent-amber);"><path d="M10 3 L17 16 L3 16 Z" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg>Options positioning shows elevated hedging demand near the target zone.</div>
+      </div>
+    </div>
+
+    <div style="background:var(--bg-2); border:1px solid var(--border-default); border-radius:8px; padding:14px;">
+      <div class="eyebrow" style="margin-bottom:6px;">Thesis invalidation</div>
+      <div style="font-size:12px; line-height:1.5; color:var(--text-secondary);">This bias is invalidated if NVDA closes below <span style="font-family:var(--font-mono); color:var(--text-primary);">$118.40</span> on a daily basis, or if volume falls back below the 30-day average while price stalls.</div>
+    </div>
+
+    <div style="font-size:10.5px; line-height:1.5; color:var(--text-tertiary); border-top:1px solid var(--border-subtle); padding-top:12px;">Signal detected by deterministic rules; reasoning generated by AI analysis. This is not guaranteed and not financial advice &mdash; confidence reflects model certainty, not probability of profit.</div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>
