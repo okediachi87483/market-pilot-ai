@@ -1,6 +1,17 @@
 # MarketPilot AI — AWS Deployment Runbook
 
-Phase 9.5. Operational companion to [docs/infrastructure.md](infrastructure.md) (architecture reference) — this document is "how to actually do things": bootstrap, deploy, roll back, set secrets, and answer the on-call questions in §8.
+Phase 9.5 (initial deployment), hardened in Phase 9.6 (go-live operational verification — see §10). Operational companion to [docs/infrastructure.md](infrastructure.md) (architecture reference) — this document is "how to actually do things": bootstrap, deploy, roll back, set secrets, and answer the on-call questions in §8.
+
+## 0. Current status (as of Phase 9.6)
+
+| Item | Status |
+|---|---|
+| AWS infrastructure | **Live**, zero Terraform drift as of this phase's audit |
+| Production URL | `http://marketpilot-prod-alb-1177715901.us-east-1.elb.amazonaws.com` (HTTP only) |
+| Domain / HTTPS | **Blocked** — no domain available yet (§4/§10) |
+| GitHub repository / CI-CD execution | **Blocked** — no GitHub remote configured, `gh` CLI not installed in this environment (§10) |
+| Claude / AI Analyst | **Wiring verified, not activated** — no real API key available; `GET /ai/status` correctly reports `configured: false` (§6, §10) |
+| Terraform drift | **None** — `terraform plan` reports "No changes" as of the Phase 9.6 audit |
 
 ## 1. Prerequisites
 
@@ -125,3 +136,24 @@ terraform destroy
 ```
 
 `db_skip_final_snapshot = true` (the tfvars.example default) means destroying the stack does **not** leave an RDS snapshot behind — set it `false` first if you want one. Nothing outside `infrastructure/terraform`'s own state is touched; your account's pre-existing `project-vpc`, `fitprogress-*`, and default-VPC resources are never referenced by this stack.
+
+## 10. Phase 9.6 — go-live hardening audit
+
+A follow-on pass to move from "infrastructure deployed" to "operationally verified," without touching application behavior. Three of the phase's five intended actions hit a genuine environmental blocker and were correctly stopped at that boundary rather than faked — see below. Everything that *could* be verified without those three inputs was re-verified live against the running production stack.
+
+**Blocked, exactly as encountered — nothing fabricated:**
+
+- **GitHub connection blocked: the GitHub CLI (`gh`) is not installed in this environment, and no GitHub remote is configured for this repository (`git remote -v` is empty).** Without `gh` there is no way to authenticate and create/attach a repository from here, and inventing a repository URL is explicitly disallowed. The `github_repository` Terraform variable therefore remains unset — the OIDC provider and deploy role are still not created — and `deploy.yml` has never actually run. Both workflow files were re-read and audited line-by-line against the Step 2 checklist (OIDC-only auth, no hardcoded keys, migration gates the service update, `services-stable` wait, post-deploy smoke test, `workflow_call` reuse of `ci.yml`) and no genuine defect was found; nothing was rewritten.
+- **HTTPS blocked because no production domain is currently available.** `aws route53 list-hosted-zones` and `aws acm list-certificates` both returned empty for this account; `.env`/environment inspection found no domain hint. `domain_name` remains unset in `terraform.tfvars` (which itself still doesn't exist — every apply so far has used only the checked-in defaults). The ALB continues serving plain HTTP on its own DNS name.
+- **Claude activation blocked: no real Anthropic API key is available anywhere in this environment** (checked the local `.env` — `AI_PROVIDER_API_KEY=` is empty — and the shell environment). Per the phase's own rule, no placeholder was substituted and none was claimed live. What *was* verified: the ECS `api` task definition injects `AI_PROVIDER_API_KEY` via `secrets`/`valueFrom` (the Secrets Manager ARN), never as a plaintext `environment` value (confirmed directly from `aws ecs describe-task-definition`); `GET /api/v1/ai/status` on the live ALB correctly reports `{"configured": false, "available": false}`. The wiring `Secrets Manager → ECS secret injection → Settings.ai_provider_api_key → AIAnalystService` is provably correct; only the real key is missing. Setting one is exactly the `aws secretsmanager put-secret-value` + `--force-new-deployment` sequence in §6 — no code or infrastructure change needed.
+
+**Re-verified live (this phase), not merely re-stated from Phase 9.5:**
+
+- `terraform fmt -check` / `validate` / `plan` — plan reports **"No changes. Your infrastructure matches the configuration"** (zero drift since the Phase 9.5 apply).
+- Security groups: RDS and Redis ingress rules carry `IpRanges: []` — SG-referenced only, no CIDR access exists at all, confirmed directly from `describe-security-groups`, not inferred from Terraform source.
+- `RDS PubliclyAccessible: false`; both ECS services have `assignPublicIp: DISABLED`; the private-data route table's only route is `local` (no NAT, no IGW) — structurally unreachable from the internet in either direction, not just policy-blocked.
+- ECS execution role: exactly `AmazonECSTaskExecutionRolePolicy` + one inline policy scoped to the two secret ARNs it actually reads — no wildcard `secretsmanager:*`, no other permissions. `marketpilot-prod-github-deploy` confirmed not to exist (matches the still-unset `github_repository` variable).
+- CloudWatch: all 7 alarms in **OK** state; a live log-tail scan for `password|secret|api_key|sk-ant` across 20 minutes of API logs returned nothing.
+- Full production pipeline, executed live against the real ALB (not a rehearsal): evaluated `NVDA` at `15m` → real `BUY`/`CANDIDATE` signal → `POST /risk/evaluate` → `APPROVED`, size `37.1222807929` computed by the Risk Engine (not supplied by AI, not supplied by the caller) → `POST /paper/execute` → `FILLED` at `134.69` → portfolio `equity`/`cash` updated correctly, `open_position_count: 1`. `GET /ai/status` still `configured: false` throughout — the AI Analyst's absence never touched any step of this. This is the same guarantee proven structurally in the Phase 9.5 audit, now also proven live in the actual production environment.
+
+No application code, risk logic, or paper-trading logic was touched in this phase — there was no genuine production defect to fix (§2's workflow audit and §"Full pipeline" above are the closest this phase came to a code-level check, and both passed clean).
