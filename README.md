@@ -15,7 +15,7 @@ Market Data -> Normalization -> Technical Analysis -> Signal Engine
    -> AI Analysis -> Risk Engine -> Paper Trading -> Portfolio -> Alerting -> Dashboard
 ```
 
-Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/market-data.md](docs/market-data.md), [docs/technical-analysis.md](docs/technical-analysis.md), [docs/signal-engine.md](docs/signal-engine.md), [docs/ai-architecture.md](docs/ai-architecture.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
+Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/market-data.md](docs/market-data.md), [docs/technical-analysis.md](docs/technical-analysis.md), [docs/signal-engine.md](docs/signal-engine.md), [docs/ai-architecture.md](docs/ai-architecture.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/paper-trading.md](docs/paper-trading.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
 
 ## Technology stack
 
@@ -99,7 +99,8 @@ npm run build                # production build
 ```
 apps/
 ├── api/            FastAPI backend — see apps/api/README.md
-│   ├── app/services/market_data/   provider, validator, normalizer, service (Phase 3)
+│   ├── app/services/{market_data,technical_analysis,signal_engine,
+│   │                  risk_engine,paper_trading}/   Phase 3-7 domains
 │   └── alembic/                    migrations
 └── web/            Next.js frontend — see apps/web/README.md
 docs/               architecture, design system, ADRs — see docs/architecture.md
@@ -114,15 +115,14 @@ docker-compose.yml
 Makefile
 ```
 
-`packages/` (the domain packages — `ai_engine`, `paper_trading`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data, technical analysis, the signal engine, and the risk engine (Phase 3/4/5/6's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis,signal_engine,risk_engine}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in each phase's completion report.
+`packages/` (the domain packages — `ai_engine`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data, technical analysis, the signal engine, the risk engine, and paper trading (Phase 3/4/5/6/7's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis,signal_engine,risk_engine,paper_trading}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in each phase's completion report. There is also no standalone `portfolio` package (docs/architecture.md §3's deviation note) — Phase 7's `paper_trading` package computes the portfolio state (equity, exposure, P/L, drawdown) both the risk engine and the dashboard need.
 
 ## Current phase
 
-**Phase 6 — Deterministic Risk Engine.** The hard safety boundary between the Signal Engine and (Phase 7's) paper trading: every `CANDIDATE` signal is checked against an 11-step, fully-explained pipeline (daily loss, drawdown, exposure, position-size, concurrent positions, stop-loss/take-profit validity, loss cooldown) and either `RISK_APPROVED` — with an engine-computed position size, stop-loss, and take-profit — or `RISK_REJECTED` with every failing reason named. Fully rule-based, no AI, no execution, no broker access. New endpoints: `GET /api/v1/risk`, `/risk/rules` (`GET`/`PUT`), `POST /risk/evaluate/{signal_id}`, `/risk/evaluations` (`GET`, `/{id}`). The `/risk` route is now a real Risk Center; the Signal Center shows a signal's live progress through risk review; the dashboard's risk panel shows real exposure/drawdown instead of hardcoded mock bars. Full detail: [docs/risk-engine.md](docs/risk-engine.md).
+**Phase 7 — Deterministic Paper Trading Engine.** Consumes only `RISK_APPROVED` signals — never `CANDIDATE` or `RISK_REJECTED` — and turns them into simulated MARKET orders: a fill at the current market price, a fee, a position (opened, added-to via weighted average, or reduced/closed with realized P/L), and a real cash ledger, all in one committed transaction (no partial financial state possible). The Risk Engine's Phase 6 checks now react to this *real* portfolio state instead of a clean-slate placeholder — concurrent positions, exposure, daily loss, drawdown, and loss cooldown are all genuinely enforced. No real broker, no real money, no short selling, no AI. New endpoints: `GET /api/v1/paper/portfolio`, `/positions`, `/orders` (`GET`, `/{id}`), `/fills`, `POST /paper/execute/{signal_id}`, `POST /paper/positions/{symbol}/close`. The `/paper` route is now a real Paper Trading Center; the Signal Center shows a signal's progress all the way through `Risk Approved → Paper Execution → Filled → Position Open`; the dashboard shows real equity/P&L instead of a mock placeholder. Full detail: [docs/paper-trading.md](docs/paper-trading.md).
 
 ## Upcoming phases
 
-7. Paper trading (simulated brokerage)
 8. AI analyst (Claude-based, schema-validated, risk-gated)
 9. MarketPilot Command Center — full data-wired UI
 10. Portfolio analytics

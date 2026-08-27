@@ -1,6 +1,6 @@
 # MarketPilot AI — UI Screen Map
 
-Twelve routes. Desktop is the primary experience (see [ui-design-system.md](ui-design-system.md) §1); mobile intelligently re-prioritizes rather than shrinking the desktop layout — each screen below states what that means concretely, not "responsive."
+Thirteen routes (`/paper` added in Phase 7). Desktop is the primary experience (see [ui-design-system.md](ui-design-system.md) §1); mobile intelligently re-prioritizes rather than shrinking the desktop layout — each screen below states what that means concretely, not "responsive."
 
 ## `/dashboard` — Command Center
 
@@ -47,7 +47,20 @@ Twelve routes. Desktop is the primary experience (see [ui-design-system.md](ui-d
 - **Desktop layout**: single-column, ordered top-to-bottom exactly DATA → ANALYSIS → SIGNAL → RISK → ACTION (mirrors the mockup at [`AIAnalyst.dc.html`](../design/command-center/AIAnalyst.dc.html)) — the vertical order itself teaches the platform's DATA → interpretation → decision model.
 - **Mobile behavior**: same section order, each section becomes a collapsible accordion so the page doesn't require excessive scrolling to reach ACTION; DATA and ANALYSIS collapse by default, SIGNAL/RISK/ACTION stay expanded since they're what most users came for.
 
+## `/paper` — Paper Trading Center (Phase 7, not in the original sketch)
+
+> Phase 7 consolidated what the sketch spread across `/portfolio`, `/positions`, and `/trades` into one screen — see docs/paper-trading.md §20. Each of those three routes still exists (below) but now just points here for the functionality that's actually real, reserving its own space for the analytics/history depth the sketch originally imagined.
+
+- **Primary user goal**: see the real, current state of the one simulated paper-trading account, and act on it.
+- **Important information**: account (starting equity, cash, equity, total/daily P/L, drawdown), open positions (symbol, quantity, average entry, current price, market value, unrealized P/L), recent simulated orders (side, quantity, requested/fill price, status), recent simulated fills (fee, timestamp).
+- **Primary actions**: close an open position (`POST /paper/positions/{symbol}/close`).
+- **Secondary actions**: none yet — order submission is signal-driven only (`POST /paper/execute/{signal_id}`, initiated from the Signal Center after risk approval, not from this screen).
+- **Desktop layout**: account stat row at top, positions table, orders table, recent fills table below.
+- **Mobile behavior**: account stats become a horizontally-scrollable strip; tables scroll horizontally within their own container rather than the page.
+
 ## `/portfolio`
+
+> **Phase 7 status**: basic equity/cash/P&L/drawdown are real — see `/paper` above. This screen is reserved for what `/paper` doesn't cover: win rate, profit factor, and a longer equity-curve history — arrives with Phase 10 ("Portfolio analytics").
 
 - **Primary user goal**: understand overall paper-trading performance.
 - **Important information**: value, cash, P/L (unrealized/realized/daily/total), drawdown, win rate, profit factor, equity curve.
@@ -58,6 +71,8 @@ Twelve routes. Desktop is the primary experience (see [ui-design-system.md](ui-d
 
 ## `/positions`
 
+> **Phase 7 status**: open positions are real — see `/paper` above. This screen is reserved for closed-position history (`/paper` only lists open positions today) — arrives with a later phase.
+
 - **Primary user goal**: review current and historical paper positions in detail.
 - **Important information**: symbol, side, quantity, entry/current price, unrealized/realized P/L, risk status.
 - **Primary actions**: filter open/closed; open a position's trade history.
@@ -66,6 +81,8 @@ Twelve routes. Desktop is the primary experience (see [ui-design-system.md](ui-d
 - **Mobile behavior**: card-per-position; P/L is the most prominent number per card (larger than symbol), since that's what a mobile glance is usually for.
 
 ## `/trades`
+
+> **Phase 7 status**: simulated order/fill history is real — see `/paper` above. Order submission there is signal-driven only; this screen's free-form "submit a new order for any asset/side/quantity" form is reserved for a later phase, since Phase 7 scoped execution to signals the Risk Engine already approved (docs/paper-trading.md §18's deviation note).
 
 - **Primary user goal**: see trade history, and submit a new paper order.
 - **Important information**: fill price, quantity, fees, P/L per trade, timestamp.

@@ -1,4 +1,5 @@
 import { StatusTag, type MarketState } from "@/components/ui/StatusTag";
+import type { PaperOrder } from "@/lib/paperTrading";
 import type { RiskEvaluation } from "@/lib/risk";
 import type { SignalResponse, SignalStrength, SignalType } from "@/lib/signals";
 
@@ -19,9 +20,20 @@ const DECISION_COLOR: Record<RiskEvaluation["decision"], string> = {
   REJECTED: "var(--color-negative)",
 };
 
-type LifecycleStage = "CANDIDATE" | "RISK_REVIEW" | "RISK_APPROVED" | "RISK_REJECTED";
+type LifecycleStage =
+  | "CANDIDATE"
+  | "RISK_REVIEW"
+  | "RISK_APPROVED"
+  | "RISK_REJECTED"
+  | "FILLED"
+  | "EXECUTION_FAILED";
 
-function currentStage(signal: SignalResponse, riskEvaluation: RiskEvaluation | null): LifecycleStage {
+function currentStage(
+  signal: SignalResponse,
+  riskEvaluation: RiskEvaluation | null,
+  paperOrder: PaperOrder | null,
+): LifecycleStage {
+  if (paperOrder) return paperOrder.status === "FILLED" ? "FILLED" : "EXECUTION_FAILED";
   if (riskEvaluation) return riskEvaluation.decision === "APPROVED" ? "RISK_APPROVED" : "RISK_REJECTED";
   if (signal.status === "RISK_APPROVED" || signal.status === "RISK_REJECTED") {
     return signal.status;
@@ -30,33 +42,42 @@ function currentStage(signal: SignalResponse, riskEvaluation: RiskEvaluation | n
 }
 
 /**
- * The risk lifecycle stepper (Step 22): CANDIDATE -> RISK REVIEW ->
- * RISK APPROVED/RISK REJECTED. Plain text + muted color, not a flashy
+ * The full signal lifecycle stepper (Step 22/25): Candidate -> Risk
+ * Review -> Risk Approved -> Filled (Position Open), branching to Risk
+ * Rejected or Execution Failed. Plain text + muted color, not a flashy
  * progress animation — this documents where a candidate is in a
  * deterministic pipeline, not a countdown to a payout.
  */
 function LifecycleStepper({ stage }: { stage: LifecycleStage }) {
+  const branch: { key: LifecycleStage; label: string } =
+    stage === "RISK_REJECTED"
+      ? { key: "RISK_REJECTED", label: "Risk Rejected" }
+      : stage === "EXECUTION_FAILED"
+        ? { key: "EXECUTION_FAILED", label: "Execution Failed" }
+        : stage === "FILLED"
+          ? { key: "FILLED", label: "Position Open" }
+          : { key: "RISK_APPROVED", label: "Risk Approved" };
+
   const steps: { key: LifecycleStage; label: string }[] = [
     { key: "CANDIDATE", label: "Candidate" },
     { key: "RISK_REVIEW", label: "Risk Review" },
-    {
-      key: stage === "RISK_REJECTED" ? "RISK_REJECTED" : "RISK_APPROVED",
-      label: stage === "RISK_REJECTED" ? "Risk Rejected" : "Risk Approved",
-    },
+    branch,
   ];
   const activeIndex = steps.findIndex((step) => step.key === stage);
+  const isFailureBranch = stage === "RISK_REJECTED" || stage === "EXECUTION_FAILED";
 
   return (
     <div className="flex items-center gap-2 text-[11px]" data-testid="lifecycle-stepper">
       {steps.map((step, index) => {
         const isActive = index === activeIndex;
         const isPast = index < activeIndex;
-        const isRejected = step.key === "RISK_REJECTED";
-        const color = isActive || isPast
-          ? isRejected
-            ? "var(--color-negative)"
-            : "var(--color-accent-teal)"
-          : "var(--color-text-tertiary)";
+        const isFailure = isFailureBranch && step.key === branch.key;
+        const color =
+          isActive || isPast
+            ? isFailure
+              ? "var(--color-negative)"
+              : "var(--color-accent-teal)"
+            : "var(--color-text-tertiary)";
         return (
           <div key={step.key} className="flex items-center gap-2">
             <span className="font-semibold uppercase tracking-wider" style={{ color }}>
@@ -71,13 +92,14 @@ function LifecycleStepper({ stage }: { stage: LifecycleStage }) {
 }
 
 /**
- * The professional Signal Center card (Step 13/22) — precise and
+ * The professional Signal Center card (Step 13/22/25) — precise and
  * disciplined, never celebratory. No color-flashing, no emoji, no
  * "you're about to win" framing: STRONG uses the same restrained teal
  * accent as any other emphasized value elsewhere in the design system,
  * not gold or flashing green. This is a deterministic strategy's
- * *suggestion*, presented with its full reasoning — not a bet, and an
- * approved candidate is never shown as an executed trade (Step 22/23).
+ * *suggestion*, presented with its full reasoning — a filled paper
+ * order is always labeled "Simulated Fill," never "trade executed"
+ * without qualification (Step 19/23).
  */
 export function SignalCard({
   signal,
@@ -85,15 +107,25 @@ export function SignalCard({
   onRunRiskReview,
   riskReviewLoading = false,
   riskReviewError = null,
+  paperOrder = null,
+  onExecutePaperOrder,
+  paperExecutionLoading = false,
+  paperExecutionError = null,
 }: {
   signal: SignalResponse;
   riskEvaluation?: RiskEvaluation | null;
   onRunRiskReview?: () => void;
   riskReviewLoading?: boolean;
   riskReviewError?: string | null;
+  paperOrder?: PaperOrder | null;
+  onExecutePaperOrder?: () => void;
+  paperExecutionLoading?: boolean;
+  paperExecutionError?: string | null;
 }) {
-  const stage = currentStage(signal, riskEvaluation);
+  const stage = currentStage(signal, riskEvaluation, paperOrder);
   const canRunRiskReview = signal.status === "CANDIDATE" && !riskEvaluation && onRunRiskReview;
+  const canExecutePaperOrder =
+    riskEvaluation?.decision === "APPROVED" && !paperOrder && onExecutePaperOrder;
 
   return (
     <section className="flex flex-col gap-4 rounded-md border border-border-subtle bg-bg-1 p-5">
@@ -176,7 +208,7 @@ export function SignalCard({
           </div>
         )}
 
-        {riskEvaluation && riskEvaluation.decision === "APPROVED" && (
+        {riskEvaluation && riskEvaluation.decision === "APPROVED" && !paperOrder && (
           <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-2 p-3">
             <div
               className="text-xs font-bold uppercase tracking-wide"
@@ -191,9 +223,21 @@ export function SignalCard({
               <RiskFact label="Take profit" value={riskEvaluation.take_profit_price} />
             </dl>
             <div className="text-[10px] text-text-tertiary">
-              Policy v{riskEvaluation.policy_version} &middot; no paper trade has been placed —
-              paper trading arrives in a later phase.
+              Policy v{riskEvaluation.policy_version} &middot; no paper trade has been placed yet.
             </div>
+            {canExecutePaperOrder && (
+              <div className="mt-1 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={onExecutePaperOrder}
+                  disabled={paperExecutionLoading}
+                  className="self-start rounded-md border border-border-default bg-bg-2 px-3 py-1.5 text-xs font-semibold text-text-primary hover:bg-bg-3 disabled:opacity-50"
+                >
+                  {paperExecutionLoading ? "Executing paper order…" : "Execute Paper Order"}
+                </button>
+                {paperExecutionError && <p className="text-xs text-negative">{paperExecutionError}</p>}
+              </div>
+            )}
           </div>
         )}
 
@@ -221,6 +265,32 @@ export function SignalCard({
                   .join(", ")}
               </div>
             )}
+          </div>
+        )}
+
+        {paperOrder && paperOrder.status === "FILLED" && (
+          <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-2 p-3">
+            <div className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--color-positive)" }}>
+              Simulated Fill &middot; Position Open
+            </div>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+              <RiskFact label="Filled quantity" value={paperOrder.filled_quantity} />
+              <RiskFact label="Fill price" value={paperOrder.average_fill_price} />
+            </dl>
+            <div className="text-[10px] text-text-tertiary">
+              Simulated order — no real money moved. See Paper Trading for the full position.
+            </div>
+          </div>
+        )}
+
+        {paperOrder && paperOrder.status !== "FILLED" && (
+          <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-2 p-3">
+            <div className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--color-negative)" }}>
+              Execution Failed
+            </div>
+            <p className="text-[11px] text-text-secondary">
+              {paperOrder.rejection_reason ?? "The simulated order was not filled."}
+            </p>
           </div>
         )}
 

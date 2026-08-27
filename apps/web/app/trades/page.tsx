@@ -2,6 +2,6 @@ import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
 
 export default function TradesPage() {
   return (
-    <ScreenPlaceholder description="Trade history and paper-order submission, gated by the risk engine. Arrives with the paper-trading package." />
+    <ScreenPlaceholder description="Simulated order/fill history is already real — see Paper Trading. Order submission is signal-driven only in this phase; free-form manual order entry is reserved for a later phase." />
   );
 }

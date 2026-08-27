@@ -63,26 +63,19 @@ FastAPI, Pydantic v2 schemas for every request/response, OpenAPI docs auto-gener
 | **GET /signals/{id}** | Single signal by UUID, with full reasoning (`reasons`, `supporting_features`, `invalidating_conditions`). `404 not_found` if unknown. |
 | **POST /signals/evaluate/{symbol}** | Evaluates `symbol` against the `trend_momentum` strategy right now and returns the resulting `CANDIDATE` signal (existing, deduplicated, or newly created — see `was_newly_created`). No request body. Never executes anything — a read of what the deterministic strategy currently suggests. `404 not_found` if the symbol is unknown; `422 validation_error` if `interval` is unsupported. |
 
-### Portfolio
+### Paper trading — implemented in Phase 7, see [paper-trading.md](paper-trading.md) §18
+
+> Deviations from the Phase 1 sketch's "Portfolio"/"Positions"/"Trades" sections: (1) everything lives under `/paper/*`, not `/portfolio`, `/positions`, `/trades` — this reflects the single simulated account this MVP actually has (no `users`/multi-portfolio table exists yet, matching every prior phase's single-implicit-user posture), not a resource per authenticated owner. (2) There is no user-submitted `POST /trades` with an arbitrary `{asset_id, side, quantity, order_type, limit_price?}` body — execution is exclusively signal-driven: `POST /paper/execute/{signal_id}` consumes a `RISK_APPROVED` signal and uses the exact quantity the Risk Engine already approved, never a client-supplied quantity or price (paper-trading.md §14/§18 — the Risk Engine remains the only source of position sizing, unchanged from Phase 6). (3) `POST /paper/positions/{symbol}/close` is a direct, non-signal-driven action, added because the sketch had no path to exit a position at all. (4) No `Idempotency-Key` header — idempotency is keyed on `signal_id` itself (a database `UNIQUE` constraint), which is the one identifier that actually determines "was this already executed" in a signal-driven model. (5) `auth: owner only` is dropped from every row below, consistent with every other endpoint in this document under the MVP's permissive local-dev auth scaffolding (§1).
 
 | | |
 |---|---|
-| **GET /portfolio** | Summary: value, cash, unrealized/realized/daily P/L, total return, exposure %, win rate. Computed via [database.md](database.md) §1's derivation rules, Redis-cached briefly. Auth: owner only. |
-| **GET /portfolio/performance** | Equity curve. Query: `range` (1D/1W/1M/3M/1Y/ALL). Auth: owner only. |
-
-### Positions
-
-| | |
-|---|---|
-| **GET /positions** | Query: `status` (open/closed/all, default open). Auth: owner only. |
-| **GET /positions/{id}** | Single position with linked trades. `404` if not found or not owned. Auth: owner only. |
-
-### Trades
-
-| | |
-|---|---|
-| **GET /trades** | Trade history. Query: `asset_id`, `from`, `to`, pagination. Auth: owner only. |
-| **POST /trades** | Submit a paper order (user-initiated). Body: `{asset_id, side, quantity, order_type, limit_price?}`. Requires `Idempotency-Key` header. Flow: validated → passed to the risk engine → `201` with the resulting `Order` (status `filled` or `rejected`, with `risk_decision_reason` always populated) — see [risk-engine.md](risk-engine.md). A rejection is a normal `201`, not an error status: the request was valid and was correctly evaluated, it just wasn't approved. `422` only for malformed input (e.g. non-positive quantity). Auth: owner only. |
+| **GET /paper/portfolio** | Full portfolio state: starting equity, cash, market value, equity, realized/unrealized/total/daily P/L, peak equity, drawdown %, open position count. |
+| **GET /paper/positions** | Query: `status` (`OPEN`/`CLOSED`). Each row includes live `current_price`/`market_value`/`unrealized_pnl` — computed on read, never stored (paper-trading.md §2). |
+| **GET /paper/orders** | Query: `symbol`, `status`, `limit`. |
+| **GET /paper/orders/{id}** | Single order by UUID. `404` if unknown. |
+| **GET /paper/fills** | Query: `symbol`, `order_id`, `limit`. |
+| **POST /paper/execute/{signal_id}** | Executes a `RISK_APPROVED` signal as a simulated MARKET BUY. `404` unknown signal; `409` if the signal isn't `RISK_APPROVED` or already has a paper order (idempotency). A `200` with `status: "REJECTED"` and a `rejection_reason` is a normal, successful response (e.g. insufficient cash) — not an error status, the same "a rejection is not an error" principle the Phase 1 sketch itself established for `POST /trades`. |
+| **POST /paper/positions/{symbol}/close** | Closes the entire open position for `symbol` as a simulated MARKET SELL. `404` if no open position exists. |
 
 ### Risk — implemented in Phase 6, see [risk-engine.md](risk-engine.md) §11
 

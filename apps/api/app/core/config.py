@@ -38,13 +38,18 @@ class Settings(BaseSettings):
     ai_model: str = "claude-sonnet-5"
     ai_provider_api_key: str | None = None
 
-    # Phase 6: there is no paper-trading portfolio yet (Phase 7), so the
-    # Risk Engine evaluates every candidate against a clean, fully-funded,
-    # position-free simulated starting equity rather than a hardcoded
-    # constant buried in business logic — see docs/risk-engine.md
-    # §"Portfolio state (the Phase 7 seam)". Phase 7 replaces the provider
-    # that reads this value with one computed from real positions/trades.
+    # Phase 6/7: the one simulated paper-trading account's starting cash
+    # and equity — see docs/paper-trading.md §"Cash accounting". Read
+    # once, at account-creation time (the initial Alembic migration
+    # seeds the single `paper_accounts` row from this value); changing
+    # it afterward does not retroactively alter an existing account.
     risk_starting_equity: Decimal = Decimal("100000")
+
+    # Phase 7: simulated trading fee, applied to every fill's notional
+    # value (docs/paper-trading.md §"Fee model"). 0.001 = 10 basis
+    # points — a representative flat commission rate, not hard-coded
+    # throughout the paper-trading business logic.
+    paper_trading_fee_rate: Decimal = Decimal("0.001")
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -5,6 +5,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError } from "@/lib/api";
 import { type Asset, getAssets } from "@/lib/marketData";
+import { type PaperOrder, executePaperOrder } from "@/lib/paperTrading";
 import { type RiskEvaluation, evaluateRisk, listRiskEvaluations } from "@/lib/risk";
 import { type EvaluateSignalResponse, evaluateSignal } from "@/lib/signals";
 import { SignalCard } from "./SignalCard";
@@ -29,6 +30,9 @@ export function SignalCenter() {
   const [riskEvaluation, setRiskEvaluation] = useState<RiskEvaluation | null>(null);
   const [riskReviewLoading, setRiskReviewLoading] = useState(false);
   const [riskReviewError, setRiskReviewError] = useState<string | null>(null);
+  const [paperOrder, setPaperOrder] = useState<PaperOrder | null>(null);
+  const [paperExecutionLoading, setPaperExecutionLoading] = useState(false);
+  const [paperExecutionError, setPaperExecutionError] = useState<string | null>(null);
 
   useEffect(() => {
     getAssets()
@@ -45,6 +49,8 @@ export function SignalCenter() {
     setError(null);
     setRiskEvaluation(null);
     setRiskReviewError(null);
+    setPaperOrder(null);
+    setPaperExecutionError(null);
 
     evaluateSignal(symbol, "1h")
       .then((result) => {
@@ -85,6 +91,18 @@ export function SignalCenter() {
         setRiskReviewError(err instanceof ApiError ? err.message : "Risk review failed.");
       })
       .finally(() => setRiskReviewLoading(false));
+  }
+
+  function handleExecutePaperOrder() {
+    if (!signal) return;
+    setPaperExecutionLoading(true);
+    setPaperExecutionError(null);
+    executePaperOrder(signal.id)
+      .then(setPaperOrder)
+      .catch((err: unknown) => {
+        setPaperExecutionError(err instanceof ApiError ? err.message : "Paper execution failed.");
+      })
+      .finally(() => setPaperExecutionLoading(false));
   }
 
   const symbolOptions = assets.length > 0 ? assets.map((asset) => asset.symbol) : FALLBACK_SYMBOLS;
@@ -130,6 +148,10 @@ export function SignalCenter() {
           onRunRiskReview={handleRunRiskReview}
           riskReviewLoading={riskReviewLoading}
           riskReviewError={riskReviewError}
+          paperOrder={paperOrder}
+          onExecutePaperOrder={handleExecutePaperOrder}
+          paperExecutionLoading={paperExecutionLoading}
+          paperExecutionError={paperExecutionError}
         />
       )}
     </div>

@@ -158,4 +158,133 @@ describe("SignalCenter", () => {
     // No "Run Risk Review" button once a decision already exists.
     expect(screen.queryByRole("button", { name: /run risk review/i })).not.toBeInTheDocument();
   });
+
+  it("executes a paper order after risk approval and shows the simulated fill", async () => {
+    const evaluationResponse = {
+      id: "re3",
+      signal_id: "s1",
+      symbol: "AAPL",
+      policy_id: "p1",
+      policy_version: 1,
+      decision: "APPROVED",
+      reasons: [],
+      checks: [],
+      calculated_position_size: "10.0000000000",
+      entry_price: "175.00000000",
+      stop_loss_price: "171.50000000",
+      take_profit_price: "182.00000000",
+      position_value: "1750.00000000",
+      portfolio_snapshot: {},
+      evaluated_at: "2024-06-01T00:00:00Z",
+      created_at: "2024-06-01T00:00:00Z",
+    };
+    const orderResponse = {
+      id: "order1",
+      signal_id: "s1",
+      symbol: "AAPL",
+      side: "BUY",
+      order_type: "MARKET",
+      quantity: "10.0000000000",
+      requested_price: "175.00000000",
+      status: "FILLED",
+      filled_quantity: "10.0000000000",
+      average_fill_price: "175.00000000",
+      rejection_reason: null,
+      created_at: "2024-06-01T00:00:00Z",
+      submitted_at: "2024-06-01T00:00:00Z",
+      filled_at: "2024-06-01T00:00:01Z",
+      cancelled_at: null,
+    };
+
+    (fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/assets")) return Promise.resolve(jsonResponse(ASSETS_RESPONSE));
+      if (url.includes("/risk/evaluate/") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse(evaluationResponse));
+      }
+      if (url.includes("/paper/execute/") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse(orderResponse));
+      }
+      return Promise.resolve(jsonResponse(SIGNAL_RESPONSE));
+    });
+
+    render(<SignalCenter />);
+    await waitFor(() => expect(screen.getByText("BUY")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /run risk review/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /execute paper order/i })).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /execute paper order/i }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Simulated Fill · Position Open")).toBeInTheDocument(),
+    );
+    // Never presented as a real trade.
+    expect(screen.queryByText(/real trade/i)).not.toBeInTheDocument();
+  });
+
+  it("shows Execution Failed with the reason when the paper order is rejected", async () => {
+    const evaluationResponse = {
+      id: "re4",
+      signal_id: "s1",
+      symbol: "AAPL",
+      policy_id: "p1",
+      policy_version: 1,
+      decision: "APPROVED",
+      reasons: [],
+      checks: [],
+      calculated_position_size: "10.0000000000",
+      entry_price: "175.00000000",
+      stop_loss_price: "171.50000000",
+      take_profit_price: "182.00000000",
+      position_value: "1750.00000000",
+      portfolio_snapshot: {},
+      evaluated_at: "2024-06-01T00:00:00Z",
+      created_at: "2024-06-01T00:00:00Z",
+    };
+    const rejectedOrderResponse = {
+      id: "order2",
+      signal_id: "s1",
+      symbol: "AAPL",
+      side: "BUY",
+      order_type: "MARKET",
+      quantity: "10.0000000000",
+      requested_price: "175.00000000",
+      status: "REJECTED",
+      filled_quantity: "0",
+      average_fill_price: null,
+      rejection_reason: "insufficient cash: required 1751.75, available 500.00",
+      created_at: "2024-06-01T00:00:00Z",
+      submitted_at: "2024-06-01T00:00:00Z",
+      filled_at: null,
+      cancelled_at: null,
+    };
+
+    (fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/assets")) return Promise.resolve(jsonResponse(ASSETS_RESPONSE));
+      if (url.includes("/risk/evaluate/") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse(evaluationResponse));
+      }
+      if (url.includes("/paper/execute/") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse(rejectedOrderResponse));
+      }
+      return Promise.resolve(jsonResponse(SIGNAL_RESPONSE));
+    });
+
+    render(<SignalCenter />);
+    await waitFor(() => expect(screen.getByText("BUY")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /run risk review/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /execute paper order/i })).toBeInTheDocument(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /execute paper order/i }));
+
+    // "Execution Failed" appears both in the lifecycle stepper and the
+    // detail block below it — assert on the unique reason text instead
+    // of the (duplicated) label to avoid an ambiguous match.
+    await waitFor(() => expect(screen.getByText(/insufficient cash/)).toBeInTheDocument());
+    expect(screen.getAllByText("Execution Failed").length).toBeGreaterThanOrEqual(2);
+  });
 });

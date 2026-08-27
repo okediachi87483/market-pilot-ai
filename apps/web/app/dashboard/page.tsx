@@ -8,9 +8,10 @@ import { WatchlistPreview } from "@/components/market/WatchlistPreview";
 
 /**
  * MarketPilot Command Center — see docs/ui-screen-map.md (/dashboard).
- * Market State (Phase 4), Signals (Phase 5), and Risk (Phase 6) are real,
- * backend-calculated data; portfolio/alerts remain clearly-labeled mock
- * placeholders until their owning phases land.
+ * Market State (Phase 4), Signals (Phase 5), Risk (Phase 6), and
+ * Portfolio (Phase 7, real paper-trading equity/P&L) are real,
+ * backend-calculated data; alerts remain a clearly-labeled mock
+ * placeholder until its owning phase lands.
  */
 export default function DashboardPage() {
   return (

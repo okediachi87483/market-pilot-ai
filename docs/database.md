@@ -148,7 +148,11 @@ erDiagram
 | `mode` | TEXT NOT NULL DEFAULT `'paper'` | CHECK IN (`paper`) in the MVP — reserved value, no other mode is enabled by application logic |
 | `created_at`,`updated_at` | TIMESTAMPTZ | |
 
-### `positions`
+### `positions`, `orders`, `trades` — superseded by Phase 7, see [paper-trading.md](paper-trading.md) §2
+
+> This sketch (below, kept for historical reference) assumed a `portfolios`/`users` table that was never built — every prior phase (3 through 7) has stayed single-implicit-user, with no auth or multi-portfolio system yet. What Phase 7 actually shipped is `paper_accounts` (one row, replacing `portfolios.cash`), `paper_positions`, `paper_orders`, and `paper_fills` (replacing `trades`) — no `portfolio_id` anywhere, `orders.limit_price`/`idempotency_key` replaced by `signal_id UNIQUE` (execution is signal-driven, not user-submitted with an arbitrary price), and no `ai_analysis_id` (no AI layer exists yet — Phase 8). Full current schema: paper-trading.md §2.
+
+### `positions` (Phase 1 sketch — see note above)
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID PK | |
@@ -164,7 +168,7 @@ erDiagram
 | Constraints | `UNIQUE(portfolio_id, asset_id) WHERE status = 'open'` | one open position per asset per portfolio in the MVP — a documented simplification, not a schema limitation for the future |
 | Indexes | `(portfolio_id, status)` | |
 
-### `orders`
+### `orders` (Phase 1 sketch — see note above)
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID PK | |
@@ -182,7 +186,7 @@ erDiagram
 | `status` | TEXT NOT NULL DEFAULT `'pending'` | CHECK IN (`pending`,`filled`,`rejected`,`cancelled`) |
 | `created_at`,`updated_at` | TIMESTAMPTZ | |
 
-### `trades`
+### `trades` (Phase 1 sketch — see note above)
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID PK | |
@@ -196,7 +200,10 @@ erDiagram
 | `executed_at` | TIMESTAMPTZ NOT NULL | |
 | Indexes | `(portfolio_id, executed_at DESC)` | |
 
-### `risk_rules`
+### `risk_rules` — superseded by Phase 6's `risk_policies`, see [risk-engine.md](risk-engine.md) §2/§3
+
+> Renamed and re-modeled in Phase 6: versioned, immutable rows (`PUT /risk/rules` inserts a new version rather than updating `portfolio_id`'s single row — there is no `portfolio_id` column at all, matching the single-account posture noted above) plus a `risk_evaluations` audit table. Kept below for historical reference only.
+
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID PK | |

@@ -3,7 +3,19 @@
 from app.models.asset import Asset
 from app.models.base import Base
 from app.models.market_data import MarketData
+from app.models.paper_trading import PaperAccount, PaperFill, PaperOrder, PaperPosition
 from app.models.risk import RiskEvaluation, RiskPolicy
 from app.models.signal import Signal
 
-__all__ = ["Base", "Asset", "MarketData", "Signal", "RiskPolicy", "RiskEvaluation"]
+__all__ = [
+    "Base",
+    "Asset",
+    "MarketData",
+    "Signal",
+    "RiskPolicy",
+    "RiskEvaluation",
+    "PaperAccount",
+    "PaperOrder",
+    "PaperFill",
+    "PaperPosition",
+]

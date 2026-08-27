@@ -7,11 +7,17 @@ Signals used here are inserted directly via `db_session` (not through
 (BUY/SELL/HOLD) it evaluates, independent of whatever the deterministic
 mock market data happens to produce for "today" (see
 tests/test_risk_service.py's module docstring for the same pattern).
-Only invalid `PUT /risk/rules` payloads are exercised here — a payload
-that fails Pydantic validation never reaches the database, so these
-tests can't disturb the process-wide active policy the way a valid
-update would; the one valid-update test lives in test_risk_service.py
-and is responsible for restoring the original values.
+Only invalid `PUT /risk/rules` payloads are exercised here, with one
+exception: `test_evaluate_risk_approves_a_healthy_buy_signal` issues a
+valid PUT to temporarily zero `cooldown_after_loss_minutes`, because
+since Phase 7 the active policy evaluates against *real* paper-trading
+state — a real loss realized by some other test (fees exceeding a tiny
+gain on a close, say) can put the shared account into a genuine
+loss-cooldown that would otherwise reject even this well-formed
+candidate. That one test captures the original policy via `GET
+/risk/rules` and restores it in a `finally` block, the same
+capture-and-restore discipline test_risk_service.py's
+`test_update_policy_...` established.
 """
 
 from datetime import UTC, datetime
@@ -22,6 +28,19 @@ from sqlalchemy import select
 
 from app.models.asset import Asset
 from app.models.signal import Signal
+
+_POLICY_FIELDS = (
+    "enabled",
+    "max_position_size_pct",
+    "max_portfolio_exposure_pct",
+    "max_daily_loss_pct",
+    "max_drawdown_pct",
+    "stop_loss_pct",
+    "take_profit_pct",
+    "risk_per_trade_pct",
+    "max_concurrent_positions",
+    "cooldown_after_loss_minutes",
+)
 
 
 async def _make_signal(db_session, symbol: str, signal_type: str) -> Signal:
@@ -112,17 +131,25 @@ async def test_evaluate_risk_approves_a_healthy_buy_signal(
 ) -> None:
     signal = await _make_signal(db_session, "AAPL", "BUY")
 
-    resp = client.post(f"/api/v1/risk/evaluate/{signal.id}")
+    original = {k: client.get("/api/v1/risk/rules").json()[k] for k in _POLICY_FIELDS}
+    neutralized = dict(original)
+    neutralized["cooldown_after_loss_minutes"] = 0
+    assert client.put("/api/v1/risk/rules", json=neutralized).status_code == 200
 
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["decision"] == "APPROVED"
-    assert body["symbol"] == "AAPL"
-    assert len(body["checks"]) == 11
-    assert body["calculated_position_size"] is not None
-    assert float(body["calculated_position_size"]) > 0
-    assert body["stop_loss_price"] is not None
-    assert body["take_profit_price"] is not None
+    try:
+        resp = client.post(f"/api/v1/risk/evaluate/{signal.id}")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["decision"] == "APPROVED"
+        assert body["symbol"] == "AAPL"
+        assert len(body["checks"]) == 11
+        assert body["calculated_position_size"] is not None
+        assert float(body["calculated_position_size"]) > 0
+        assert body["stop_loss_price"] is not None
+        assert body["take_profit_price"] is not None
+    finally:
+        assert client.put("/api/v1/risk/rules", json=original).status_code == 200
 
 
 @pytest.mark.asyncio

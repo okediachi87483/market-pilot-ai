@@ -1,47 +1,42 @@
-"""Where `PortfolioSnapshot` comes from today — and the seam Phase 7
-(paper trading) will replace.
+"""Where `PortfolioSnapshot` comes from — the Risk Engine's read-only
+view onto the real paper-trading account.
 
-There is no `positions`/`trades`/`orders` table yet (Phase 7 builds
-them). Steps 12/13/14/15/16 all describe checks against "authoritative
-backend state" — exposure, concurrent positions, daily realized P/L,
-drawdown, and the last losing trade's timestamp. Until real trading
-activity exists, the only honest authoritative answer for all of those
-is: a clean, fully-funded, position-free portfolio. This is not a
-placeholder computation faked to look real — it *is* the real state of
-an account that has never traded, computed the same way it always will
-be once Phase 7 exists: equity/cash start from the account's starting
-balance, and every other field derives from position/trade history that
-is, today, genuinely empty.
-
-`PortfolioStateProvider` is the seam: `RiskService` depends on this
-class's `get_snapshot()` method, not on how it's computed. Phase 7 swaps
-this implementation for one that aggregates real `positions`/`trades`
-rows — no caller of `get_snapshot()` needs to change.
+**Phase 7 update**: this used to return a clean, position-free default
+(Phase 6, before paper trading existed) — see git history / the Phase 6
+completion report for that version. It now delegates to
+`app.services.paper_trading.portfolio.compute_portfolio_state`, the one
+authoritative computation over `paper_accounts`/`paper_positions`/
+`paper_fills`, and maps the fields the Risk Engine's check pipeline
+actually needs into `risk_engine.types.PortfolioSnapshot`. No caller of
+`get_snapshot()` (`RiskService`) needed to change — this is exactly the
+seam Phase 6 documented in advance.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from decimal import Decimal
 
-from app.core.config import Settings
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.services.market_data.service import MarketDataService
+from app.services.paper_trading.portfolio import compute_portfolio_state
 from app.services.risk_engine.types import PortfolioSnapshot
 
 
 class PortfolioStateProvider:
-    def __init__(self, settings: Settings) -> None:
-        self._starting_equity = settings.risk_starting_equity
+    def __init__(self, db: AsyncSession, market_data_service: MarketDataService) -> None:
+        self.db = db
+        self.market_data_service = market_data_service
 
     async def get_snapshot(self, *, as_of: datetime | None = None) -> PortfolioSnapshot:
-        as_of = as_of or datetime.now(UTC)
-        equity = self._starting_equity
+        state = await compute_portfolio_state(self.db, self.market_data_service)
         return PortfolioSnapshot(
-            equity=equity,
-            cash=equity,
-            high_water_mark=equity,
-            open_position_count=0,
-            open_position_value=Decimal("0"),
-            realized_pl_today=Decimal("0"),
-            last_losing_trade_at=None,
-            as_of=as_of,
+            equity=state.equity,
+            cash=state.cash,
+            high_water_mark=state.peak_equity,
+            open_position_count=state.open_position_count,
+            open_position_value=state.market_value,
+            realized_pl_today=state.daily_pnl,
+            last_losing_trade_at=state.last_losing_trade_at,
+            as_of=as_of or datetime.now(UTC),
         )

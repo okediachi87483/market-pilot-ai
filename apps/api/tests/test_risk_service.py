@@ -11,15 +11,26 @@ original active values first and restores them at the end, so every
 other test in the suite (this file and others, since Postgres state is
 shared and not rolled back per test) always evaluates against the same
 effective policy values regardless of run order.
+
+Since Phase 7, `PortfolioStateProvider` reads *real* paper-trading state
+(docs/risk-engine.md §4 was the Phase 6 placeholder; it's gone). That
+means a test asserting "a healthy signal is approved" is no longer safe
+on its own: a real loss realized by some other test (e.g. fees
+exceeding a tiny gain on a close) can put the shared account into a
+genuine loss-cooldown, which would correctly reject even a well-formed
+candidate. `_neutralize_cooldown` below temporarily zeroes
+`cooldown_after_loss_minutes` (capture-and-restore, same discipline as
+`test_update_policy_...`) so that specific, unrelated risk stays from
+interfering with a test that isn't about cooldown at all.
 """
 
 import uuid
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import select
 
-from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError
 from app.models.asset import Asset
 from app.models.signal import Signal
@@ -30,8 +41,36 @@ from app.services.risk_engine.service import RiskService
 
 def _service(db_session) -> RiskService:
     market_data = MarketDataService(db_session)
-    portfolio_state_provider = PortfolioStateProvider(get_settings())
+    portfolio_state_provider = PortfolioStateProvider(db_session, market_data)
     return RiskService(db_session, market_data, portfolio_state_provider)
+
+
+@asynccontextmanager
+async def _neutralize_cooldown(service: RiskService):
+    """Temporarily zeroes `cooldown_after_loss_minutes` so a real loss
+    realized elsewhere in the shared test session can't reject a signal
+    this test expects to be approved for unrelated reasons — see the
+    module docstring."""
+    original = await service.get_active_policy()
+    original_values = {
+        "enabled": original.enabled,
+        "max_position_size_pct": original.max_position_size_pct,
+        "max_portfolio_exposure_pct": original.max_portfolio_exposure_pct,
+        "max_daily_loss_pct": original.max_daily_loss_pct,
+        "max_drawdown_pct": original.max_drawdown_pct,
+        "stop_loss_pct": original.stop_loss_pct,
+        "take_profit_pct": original.take_profit_pct,
+        "risk_per_trade_pct": original.risk_per_trade_pct,
+        "max_concurrent_positions": original.max_concurrent_positions,
+        "cooldown_after_loss_minutes": original.cooldown_after_loss_minutes,
+    }
+    neutralized = dict(original_values)
+    neutralized["cooldown_after_loss_minutes"] = 0
+    try:
+        await service.update_policy(neutralized)
+        yield
+    finally:
+        await service.update_policy(original_values)
 
 
 async def _make_signal(db_session, symbol: str, signal_type: str, *, status="CANDIDATE") -> Signal:
@@ -62,16 +101,17 @@ async def test_evaluate_healthy_buy_signal_is_approved_and_transitions_status(db
     signal = await _make_signal(db_session, "AAPL", "BUY")
     service = _service(db_session)
 
-    evaluation = await service.evaluate_signal(signal.id)
+    async with _neutralize_cooldown(service):
+        evaluation = await service.evaluate_signal(signal.id)
 
-    assert evaluation.decision == "APPROVED"
-    assert evaluation.calculated_position_size is not None
-    assert evaluation.calculated_position_size > 0
-    assert evaluation.stop_loss_price is not None
-    assert evaluation.take_profit_price is not None
+        assert evaluation.decision == "APPROVED"
+        assert evaluation.calculated_position_size is not None
+        assert evaluation.calculated_position_size > 0
+        assert evaluation.stop_loss_price is not None
+        assert evaluation.take_profit_price is not None
 
-    await db_session.refresh(signal)
-    assert signal.status == "RISK_APPROVED"
+        await db_session.refresh(signal)
+        assert signal.status == "RISK_APPROVED"
 
 
 @pytest.mark.asyncio

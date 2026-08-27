@@ -1,6 +1,6 @@
 # MarketPilot AI — Risk Engine
 
-Phase 6. The hard safety boundary between the Signal Engine and (Phase 7's) paper trading. A `Signal` in status `CANDIDATE` can never become a paper trade without passing through here — the Risk Engine is the only component allowed to move a signal to `RISK_APPROVED` or `RISK_REJECTED`, and it does so deterministically. **No AI, no broker access, no order placement, no real money anywhere in this layer.**
+Phase 6. The hard safety boundary between the Signal Engine and [paper trading](paper-trading.md) (Phase 7). A `Signal` in status `CANDIDATE` can never become a paper trade without passing through here — the Risk Engine is the only component allowed to move a signal to `RISK_APPROVED` or `RISK_REJECTED`, and it does so deterministically. **No AI, no broker access, no order placement, no real money anywhere in this layer.**
 
 ## 1. Architecture
 
@@ -30,7 +30,7 @@ RiskService                    — app/services/risk_engine/service.py
 API (docs/api.md) → Risk Center UI
         │
         ▼
-(future) Phase 7: paper trading consumes RISK_APPROVED signals   [not built yet]
+Paper Trading Engine (Phase 7, paper-trading.md) consumes RISK_APPROVED signals
 ```
 
 `app/services/risk_engine/` is independent of FastAPI and the database (Step 2), mirroring `signal_engine`'s split: `types.py`, `defaults.py`, `sizing.py`, `checks.py`, and `engine.py` take plain dataclasses in and return a plain dataclass out — no I/O, no randomness. `RiskService` and `portfolio_state.py` are the only pieces that know about the database, `MarketDataService`, or ORM models.
@@ -59,20 +59,18 @@ One configurable policy, versioned and stored in `risk_policies` (Step 4). Every
 
 **`risk_evaluations`**: `id`, `signal_id` (FK), `policy_id` + `policy_version`, `decision` (`APPROVED`/`REJECTED`), `reasons` (JSONB list — every failed, non-skipped check's detail), `checks` (JSONB list of all 11 `{name, passed, detail, skipped}` rows), `calculated_position_size`/`entry_price`/`stop_loss_price`/`take_profit_price`/`position_value` (all `NUMERIC`, nullable — populated whenever computed, even for a rejected candidate, so a reviewer can see what *would have* been sized), `portfolio_snapshot` (JSONB — the exact `PortfolioSnapshot` used, §5), `evaluated_at`, `created_at`. Never updated after insert — append-only, like `audit_logs`. Financial columns use the same `NUMERIC(20,8)`/`NUMERIC(28,10)` precision as `market_data`/`signals` (docs/database.md §1) — never floats.
 
-## 4. Portfolio state — the Phase 7 seam
+## 4. Portfolio state — real as of Phase 7
 
-There is no `positions`/`trades`/`orders` table yet — Phase 7 builds them. Steps 12-16 all describe checks against "authoritative backend state" (exposure, concurrent positions, daily P/L, drawdown, last losing trade). Until real trading activity exists, the only honest authoritative answer for all of those is: **a clean, fully-funded, position-free portfolio.** This isn't a faked placeholder — it *is* the real state of an account that has never traded, computed the same way it always will be: equity/cash start from a configured starting balance (`RISK_STARTING_EQUITY`, `.env.example`, default $100,000), and every other field derives from position/trade history that is, today, genuinely empty:
+`PortfolioStateProvider` (`app/services/risk_engine/portfolio_state.py`) is the seam Phase 6 documented in advance: `RiskService` depends only on its `get_snapshot()` method, never on how it's computed. Phase 7 (paper trading) swapped the implementation — it now delegates to `app.services.paper_trading.portfolio.compute_portfolio_state()`, the one authoritative computation over the real `paper_accounts`/`paper_positions`/`paper_fills` tables, and maps the fields the check pipeline needs into the same, unchanged `PortfolioSnapshot` shape below. No caller changed, and no check in §5 was rewritten — see [paper-trading.md](paper-trading.md) §13 for the field-by-field mapping and the regression tests that prove each check now genuinely reacts to real trading activity.
 
-| Field | Current value | Why |
-|---|---|---|
-| `equity`, `cash` | starting balance | no trades have changed it |
-| `high_water_mark` | = equity | no performance history exists yet |
-| `open_position_count` | 0 | no positions table |
-| `open_position_value` | 0 | same |
-| `realized_pl_today` | 0 | no trades table |
-| `last_losing_trade_at` | `null` | same |
-
-`PortfolioStateProvider` (`app/services/risk_engine/portfolio_state.py`) is the seam: `RiskService` depends on its `get_snapshot()` method, not on how it's computed. Phase 7 swaps the implementation for one that aggregates real `positions`/`trades` rows — no caller changes. Every check in §5 that reads these fields (daily loss, drawdown, concurrent positions, cooldown) is fully real, tested logic (see §11) that today always evaluates against this clean state — it isn't a no-op stub, it's a correct answer to a currently-trivial question.
+| Field | Source since Phase 7 |
+|---|---|
+| `equity`, `cash` | `paper_accounts.cash` + live market value of open positions |
+| `high_water_mark` | `paper_accounts.peak_equity`, ratcheted on every computation |
+| `open_position_count` | real count of `paper_positions` where `status = 'OPEN'` |
+| `open_position_value` | real Σ market value of those positions |
+| `realized_pl_today` | real sum of today's (UTC) realized `paper_fills.realized_pnl` |
+| `last_losing_trade_at` | real `MAX(timestamp)` over losing `paper_fills` |
 
 ## 5. The check pipeline (Step 6)
 
@@ -80,7 +78,7 @@ Eleven checks, always evaluated and reported in this exact order (`app/services/
 
 | # | Check | Hard gate? | Meaning |
 |---|---|---|---|
-| 1 | `signal_validity` | yes | Only a `BUY` signal is an actionable long entry in this phase (Step 9: no short-position logic). `SELL`/`HOLD` fail here — a `SELL` is an exit/reduce suggestion, but there's no position to exit yet (Phase 7). |
+| 1 | `signal_validity` | yes | Only a `BUY` signal is an actionable long entry in this phase (Step 9: no short-position logic). `SELL`/`HOLD` fail here — a `SELL` is an exit/reduce suggestion, and exiting a position happens through paper-trading.md's direct `POST /paper/positions/{symbol}/close` action, not through this signal-evaluation path. |
 | 2 | `signal_status` | no | Always reported `passed` — `RiskService` already verified the signal was `CANDIDATE` before the engine ever runs (Step 17, §9). Kept as an explicit, named row in the audit trail rather than silently omitted. |
 | 3 | `risk_policy_enabled` | yes | The active policy's `enabled` flag — a pause switch for the whole engine. |
 | 4 | `daily_loss_limit` | no | `realized_pl_today > -(equity * max_daily_loss_pct / 100)`. |
@@ -120,7 +118,7 @@ Long-only. `stop_loss_price = entry_price × (1 − stop_loss_pct / 100)`; `take
 
 ## 8. Exposure, concurrent positions, daily loss, drawdown, cooldown (Steps 12-16)
 
-Each is a real, independently-tested computation (§11) against `PortfolioSnapshot` (§4) and the active policy — see the check table in §5 for the exact formulas. **Given §4's current portfolio state, checks 4/6/7/11 structurally always pass today** (zero realized P/L, zero positions, no loss history) — this is an honest consequence of Phase 7 not existing yet, not a shortcut in the logic itself: every one of these checks is exercised with deliberately-constructed non-trivial `PortfolioSnapshot` values in the unit test suite (boundary conditions, over-limit, exactly-at-limit) and will engage identically on real data the moment Phase 7 populates the underlying tables.
+Each is a real, independently-tested computation (§11) against `PortfolioSnapshot` (§4) and the active policy — see the check table in §5 for the exact formulas. Since Phase 7, all five genuinely react to real trading activity (paper-trading.md §13): open enough positions and `max_concurrent_positions` rejects; grow exposure past the configured limit and `portfolio_exposure` rejects; realize a loss today and `daily_loss_limit` rejects; realize a large enough loss and `max_drawdown` rejects; realize any loss recently and `loss_cooldown` rejects — each proven directly in `tests/test_paper_risk_regression.py`, not just the unit-level boundary tests in §11 that predate paper trading existing.
 
 ## 9. Signal lifecycle and the one controlled transition (Step 17)
 
@@ -181,7 +179,6 @@ An AI-suggested action will still have to pass every check in §5 unchanged — 
 
 ## 16. Limitations
 
-- Portfolio state is a clean simulated default until Phase 7 (§4/§8) — every check is real and tested, but four of the eleven currently always pass given no trading history exists yet.
 - One policy at a time, no per-user configuration (matches the single-implicit-user posture of every prior phase).
 - No re-evaluation mechanism — a rejected signal stays rejected; a corrected signal must come from a fresh `POST /signals/evaluate/{symbol}` cycle, not a retry of the same signal id.
 - The Risk Center's policy panel is read-only; changing limits is API-only (`PUT /risk/rules`) in this phase.

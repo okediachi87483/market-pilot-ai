@@ -2,7 +2,7 @@
 
 Profit Protection is a monitoring system, not a withdrawal system. It watches portfolio thresholds and generates alerts. **It never moves money, closes a position, or takes any action on its own** — the user remains responsible for every real decision. This is a hard product boundary, not just an MVP limitation: see [ADR-007](decisions/ADR-007-paper-trading-first.md).
 
-> **Status**: the `alerts` package this document describes is not built yet (later phase — see [architecture.md](architecture.md) §"Upcoming phases"). The *risk controls* it references, however, are real as of Phase 6 — see [risk-engine.md](risk-engine.md). This document is the design sketch for how a future `alerts` package will *observe* those same numbers without gating anything, once it exists.
+> **Status**: the `alerts` package this document describes is not built yet (later phase — see [architecture.md](architecture.md) §"Upcoming phases"). The *risk controls* it references are real as of Phase 6 ([risk-engine.md](risk-engine.md)), and as of Phase 7 the portfolio numbers underneath them (P/L, drawdown, exposure) are real trading data too, not a placeholder — see [paper-trading.md](paper-trading.md) §10/§13. This document is the design sketch for how a future `alerts` package will *observe* those same numbers without gating anything, once it exists.
 
 ## 1. Monitored thresholds
 
