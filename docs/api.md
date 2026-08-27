@@ -19,19 +19,19 @@ FastAPI, Pydantic v2 schemas for every request/response, OpenAPI docs auto-gener
 |---|---|
 | **GET /health** | Liveness/readiness. No auth. Returns `{"status": "ok", "db": "ok"|"down", "redis": "ok"|"down"}`. `200` if the process is up regardless of dependency state (liveness); dependency state is informational here — see [observability.md](observability.md) for the separate readiness check used by orchestration. |
 
-### Assets
+### Assets — implemented in Phase 3, see [market-data.md](market-data.md) §9
 
 | | |
 |---|---|
-| **GET /assets** | List tradable assets. Query: `class` (equity/etf/crypto/forex), `search` (symbol/name substring), pagination. Response: array of `Asset` (id, symbol, class, name, exchange, currency, is_active). Auth: any authenticated user. |
-| **GET /assets/{symbol}** | Single asset detail. `404 not_found` if unknown symbol. Auth: any authenticated user. |
+| **GET /assets** | List assets. Query: `asset_type` (equity/etf/crypto/forex, optional filter). Returns only `active` assets. Response: array of `Asset` (id, symbol, name, asset_type, exchange, currency, active, created_at, updated_at). No auth yet (see [security.md](security.md) — auth scaffolding, not enforced this phase). |
+| **GET /assets/{symbol}** | Single asset detail, case-insensitive symbol lookup. `404 not_found` if unknown symbol. |
 
-### Market data
+### Market data — implemented in Phase 3, see [market-data.md](market-data.md) §9
 
 | | |
 |---|---|
-| **GET /market/{symbol}** | Latest normalized bar + derived fields (change %, session state). `404` if symbol unknown or has no data yet (`code: no_data`). Auth: any authenticated user. |
-| **GET /market/{symbol}/history** | OHLCV series. Query: `timeframe` (1m/5m/1h/1d, default 1d), `from`, `to` (ISO dates, default last 90 days), pagination. `400 validation_error` if `from > to` or range exceeds a configured max (prevents unbounded scans). Auth: any authenticated user. |
+| **GET /market/{symbol}** | Current quote — the latest `1m` bar as of now, ingested on demand. Response includes `source` and `is_mock: true`. `404 not_found` if the symbol is unknown. |
+| **GET /market/{symbol}/history** | OHLCV series. Query: `interval` (1m/5m/15m/1h/1d, default 1d), `start`, `end` (ISO 8601, default window sized per interval). `422 validation_error` if `interval` is unsupported, `start > end`, or the range would exceed the 2000-bar cap. `404 not_found` if the symbol is unknown. |
 
 ### Watchlists
 

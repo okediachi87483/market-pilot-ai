@@ -1,2 +1,7 @@
-# Domain models (SQLAlchemy) arrive with each owning package in Phase 3+.
-# See docs/database.md. Intentionally empty in the Phase 2 foundation.
+# Every ORM model must be imported here so app.models.base.Base.metadata
+# is complete for Alembic autogenerate and app startup.
+from app.models.asset import Asset
+from app.models.base import Base
+from app.models.market_data import MarketData
+
+__all__ = ["Base", "Asset", "MarketData"]

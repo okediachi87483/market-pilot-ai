@@ -11,6 +11,7 @@ dependencies = [
     "sqlalchemy[asyncio]==2.0.36",
     "asyncpg==0.30.0",
     "redis==5.2.1",
+    "alembic==1.14.0",
 ]
 
 [project.optional-dependencies]
@@ -38,9 +39,18 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Alembic revision scripts follow Alembic's generated template style, not
+# this project's — linting them adds noise without value.
+extend-exclude = ["alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's DI pattern is `param: T = Depends(...)` / `= Query(...)` —
+# these calls are deliberately evaluated at definition time by design,
+# not the mutable-default-argument footgun B008 otherwise flags.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
 
 [tool.mypy]
 python_version = "3.12"

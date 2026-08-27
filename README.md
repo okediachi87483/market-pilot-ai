@@ -3,6 +3,8 @@
 An AI-powered market intelligence and paper-trading platform: continuous market monitoring, technical signals, AI-assisted analysis, a deterministic risk engine, and a simulated portfolio — presented through an "AI market command center" dashboard.
 
 > **This version is paper-trading infrastructure only and does not execute real financial transactions.** There is no brokerage integration, no real order execution, and no real-money withdrawal anywhere in this codebase. See [docs/decisions/ADR-007-paper-trading-first.md](docs/decisions/ADR-007-paper-trading-first.md).
+>
+> **All market data is currently MOCK DATA.** Prices, quotes, and history come from a deterministic mock provider (`apps/api/app/services/market_data/mock_provider.py`), not a live feed — every API response and UI panel showing market data labels it `SOURCE: MOCK`. See [docs/market-data.md](docs/market-data.md).
 
 ## Architecture overview
 
@@ -13,7 +15,7 @@ Market Data -> Normalization -> Technical Analysis -> Signal Engine
    -> AI Analysis -> Risk Engine -> Paper Trading -> Portfolio -> Alerting -> Dashboard
 ```
 
-Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/ai-architecture.md](docs/ai-architecture.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
+Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/market-data.md](docs/market-data.md), [docs/ai-architecture.md](docs/ai-architecture.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
 
 ## Technology stack
 
@@ -73,10 +75,11 @@ cd apps/api
 python -m venv .venv && source .venv/Scripts/activate   # Windows; macOS/Linux: .venv/bin/activate
 python -m pip install -e ".[dev]"
 
-python -m pytest -v          # tests
+python -m pytest -v          # tests (needs `docker compose up -d postgres redis` for DB-backed tests)
 python -m ruff check .       # lint
 python -m ruff format .      # format
 python -m mypy app           # type-check
+python -m alembic upgrade head   # apply migrations
 ```
 
 **Frontend** (`apps/web`):
@@ -96,6 +99,8 @@ npm run build                # production build
 ```
 apps/
 ├── api/            FastAPI backend — see apps/api/README.md
+│   ├── app/services/market_data/   provider, validator, normalizer, service (Phase 3)
+│   └── alembic/                    migrations
 └── web/            Next.js frontend — see apps/web/README.md
 docs/               architecture, design system, ADRs — see docs/architecture.md
 infrastructure/
@@ -109,15 +114,14 @@ docker-compose.yml
 Makefile
 ```
 
-`packages/` (the domain packages — `market_data`, `technical_analysis`, `signal_engine`, `ai_engine`, `risk_engine`, `paper_trading`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: Phase 2 is foundation only, and each package is created with real content when its owning phase begins, rather than as an empty placeholder. See [docs/architecture.md](docs/architecture.md) §4 and the Phase 2 completion report for the full reasoning.
+`packages/` (the domain packages — `technical_analysis`, `signal_engine`, `ai_engine`, `risk_engine`, `paper_trading`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data (Phase 3's owning domain) lives inside `apps/api/app/services/market_data/` rather than a standalone `packages/market_data/` — a pragmatic simplification (see docs/architecture.md's "do not over-engineer" principle) now recorded as a deviation in the Phase 3 completion report; extracting it to `packages/` remains available once a second consumer (e.g. the signal engine) needs it.
 
 ## Current phase
 
-**Phase 2 — Foundation.** A fully runnable local development environment: Next.js shell with all twelve routes, FastAPI with health/readiness checks and the `/api/v1` namespace boundary, PostgreSQL and Redis wired for connectivity (no domain schema yet), Docker Compose, structured logging, and CI-ready lint/type-check/test tooling for both apps.
+**Phase 3 — Market Data Ingestion & Normalization.** A real ingestion pipeline: provider abstraction (`MarketDataProvider` protocol) with a deterministic mock implementation, OHLCV validation and normalization, idempotent PostgreSQL persistence (Alembic-migrated), and the first real API endpoints (`/api/v1/assets`, `/api/v1/market/{symbol}`, `/api/v1/market/{symbol}/history`) — all consumed by a real `/markets` page and a live-data watchlist panel. Full detail: [docs/market-data.md](docs/market-data.md).
 
 ## Upcoming phases
 
-3. Market data ingestion (mock provider) + normalization
 4. Technical indicators
 5. Deterministic signal engine
 6. Deterministic risk engine

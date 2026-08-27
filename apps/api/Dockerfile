@@ -17,8 +17,12 @@ RUN groupadd --gid 1000 marketpilot && \
 COPY --from=builder /install /usr/local
 WORKDIR /app
 COPY app ./app
+COPY alembic.ini ./
+COPY alembic ./alembic
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
 USER marketpilot
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
     CMD python -c "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/health/live', timeout=2).status == 200 else sys.exit(1)"
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["./docker-entrypoint.sh"]

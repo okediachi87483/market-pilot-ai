@@ -1,3 +1,2 @@
-# Business logic services arrive with each owning package in Phase 3+.
-# See docs/component-architecture.md §2. Intentionally empty in the
-# Phase 2 foundation.
+# Business logic services. market_data is Phase 3's; more arrive per
+# owning phase (see docs/architecture.md §3).

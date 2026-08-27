@@ -1,0 +1,5 @@
+# Force LF everywhere, regardless of platform checkout settings. This
+# project mixes Windows development with Linux containers — a CRLF
+# shebang line (e.g. in apps/api/docker-entrypoint.sh) silently breaks
+# inside the container, so text files must never be checked out as CRLF.
+* text=auto eol=lf

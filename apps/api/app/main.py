@@ -11,6 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.error_handlers import register_error_handlers
 from app.api.health import router as health_router
 from app.api.v1.router import api_v1_router
 from app.core.config import APP_VERSION, get_settings
@@ -63,6 +64,8 @@ def create_app() -> FastAPI:
         response = await call_next(request)
         response.headers["x-request-id"] = request_id
         return response
+
+    register_error_handlers(app)
 
     app.include_router(health_router)
     app.include_router(api_v1_router)

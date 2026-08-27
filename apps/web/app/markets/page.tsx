@@ -1,7 +1,5 @@
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { MarketExplorer } from "@/components/market/MarketExplorer";
 
 export default function MarketsPage() {
-  return (
-    <ScreenPlaceholder description="Asset browser — search and research assets by class, with price charts. Arrives with the market-data package." />
-  );
+  return <MarketExplorer />;
 }

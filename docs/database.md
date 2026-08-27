@@ -47,17 +47,20 @@ erDiagram
 | `created_at`, `updated_at` | TIMESTAMPTZ NOT NULL | |
 
 ### `assets`
+
+> Implemented in Phase 3 as `asset_type`/`active`/`updated_at` rather than this document's original `asset_class`/`is_active` (no `updated_at`) sketch — the names below are what actually shipped (`apps/api/app/models/asset.py`); see [market-data.md](market-data.md) §4.
+
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID PK | |
 | `symbol` | TEXT NOT NULL | e.g. `NVDA`, `BTC-USD`, `EUR/USD` |
-| `asset_class` | TEXT NOT NULL | CHECK IN (`equity`,`etf`,`crypto`,`forex`) |
+| `asset_type` | TEXT NOT NULL | CHECK IN (`equity`,`etf`,`crypto`,`forex`) |
 | `name` | TEXT | |
 | `exchange` | TEXT | nullable (not meaningful for forex/crypto pairs) |
 | `currency` | TEXT NOT NULL DEFAULT `'USD'` | |
-| `is_active` | BOOLEAN NOT NULL DEFAULT `true` | soft-disable without deleting history |
-| `created_at` | TIMESTAMPTZ NOT NULL | |
-| Constraints | `UNIQUE(symbol, asset_class)` | |
+| `active` | BOOLEAN NOT NULL DEFAULT `true` | soft-disable without deleting history |
+| `created_at`, `updated_at` | TIMESTAMPTZ NOT NULL | |
+| Constraints | `UNIQUE(symbol, asset_type)` | |
 
 ### `watchlists` / `watchlist_items`
 | Table | Column | Type | Notes |
@@ -73,17 +76,20 @@ erDiagram
 | | Constraints | `UNIQUE(watchlist_id, asset_id)` | |
 
 ### `market_data`
+
+> Implemented in Phase 3 as `interval`/`timestamp` rather than this document's original `timeframe`/`ts` sketch, and with a UUID PK (matching every other table) rather than BIGSERIAL — see [market-data.md](market-data.md) §4.
+
 | Column | Type | Notes |
 |---|---|---|
-| `id` | BIGSERIAL PK | high-volume table; sequential integer PK, not UUID, for index density |
-| `asset_id` | FK → `assets.id` NOT NULL | |
-| `timeframe` | TEXT NOT NULL | e.g. `1m`, `5m`, `1d` |
-| `ts` | TIMESTAMPTZ NOT NULL | bar timestamp (open time), UTC |
-| `open`,`high`,`low`,`close` | NUMERIC(20,8) NOT NULL | |
-| `volume` | NUMERIC(28,10) NOT NULL | |
-| `source` | TEXT NOT NULL | provider id; MVP value is always `mock` — see [ai-architecture.md](ai-architecture.md) note on labeled mock data |
-| Constraints | `UNIQUE(asset_id, timeframe, ts)` | prevents duplicate bars on re-ingestion |
-| Indexes | `(asset_id, timeframe, ts DESC)` | primary query pattern: latest N bars for an asset/timeframe |
+| `id` | UUID PK | |
+| `asset_id` | FK → `assets.id` NOT NULL, `ON DELETE CASCADE` | |
+| `interval` | TEXT NOT NULL | CHECK IN (`1m`,`5m`,`15m`,`1h`,`1d`) |
+| `timestamp` | TIMESTAMPTZ NOT NULL | bar timestamp (open time), UTC |
+| `open`,`high`,`low`,`close` | NUMERIC(20,8) NOT NULL | CHECK `high >= open/close/low`, `low <= open/close`, all `> 0` |
+| `volume` | NUMERIC(28,10) NOT NULL | CHECK `>= 0` |
+| `source` | TEXT NOT NULL | provider id; MVP value is always `mock` — see [market-data.md](market-data.md) §9 note on labeled mock data |
+| Constraints | `UNIQUE(asset_id, interval, timestamp, source)` | prevents duplicate bars on re-ingestion — idempotent ingestion, see [market-data.md](market-data.md) §8 |
+| Indexes | `asset_id`, `timestamp`, composite `(asset_id, timestamp)` | primary query pattern: latest N bars for an asset/interval |
 
 ### `indicators`
 | Column | Type | Notes |

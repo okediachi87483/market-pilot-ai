@@ -10,31 +10,36 @@ python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 cp ../../.env.example ../../.env  # if not already created
+alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 
-Requires Postgres and Redis reachable per `.env` — easiest via `docker compose up postgres redis` from the repo root.
+Requires Postgres and Redis reachable per `.env` — easiest via `docker compose up -d postgres redis` from the repo root. In Docker, migrations run automatically on container start (`docker-entrypoint.sh`).
 
 ## Commands
 
 | Command | Purpose |
 |---|---|
-| `pytest` | Run tests |
+| `pytest` | Run tests (DB-backed tests auto-skip without a live Postgres) |
 | `ruff check .` | Lint |
 | `ruff format .` | Format |
 | `mypy app` | Type-check |
+| `alembic upgrade head` | Apply migrations |
+| `alembic revision --autogenerate -m "..."` | Generate a migration from model changes |
 
 ## Structure
 
 ```
 app/
 ├── api/          HTTP routers — health checks (unversioned) + /api/v1 namespace
-├── core/         settings, logging — the only place environment variables are read
+├── core/         settings, logging, error types — the only place environment variables are read
 ├── db/           Postgres + Redis connection management
-├── models/       SQLAlchemy models (empty — arrives per-package in Phase 3+)
+├── models/       SQLAlchemy models — Asset, MarketData (Phase 3)
 ├── schemas/      Pydantic request/response schemas
-├── services/     business logic (empty — arrives per-package in Phase 3+)
+├── services/
+│   └── market_data/   provider (protocol + mock), validator, normalizer, service (Phase 3)
 └── main.py       app factory, composition root
+alembic/          migrations — see docs/market-data.md §4
 ```
 
-See [docs/architecture.md](../../docs/architecture.md) and [docs/api.md](../../docs/api.md) for the full design this scaffolds.
+See [docs/architecture.md](../../docs/architecture.md), [docs/api.md](../../docs/api.md), and [docs/market-data.md](../../docs/market-data.md) for the full design this implements.

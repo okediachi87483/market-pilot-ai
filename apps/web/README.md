@@ -29,9 +29,12 @@ app/            routes (App Router) — one folder per screen in docs/ui-screen-
 components/
 ├── shell/      AppShell, Sidebar, TopBar — the persistent chrome
 ├── ui/         design-system primitives (Card, StatusTag, Skeleton, EmptyState, ErrorState)
-└── market/     placeholder panels with clearly-labeled mock data
-lib/            nav definitions, API fetch wrapper
+└── market/     MarketExplorer, PriceChart, WatchlistPreview — real API data (Phase 3);
+                remaining panels (AI/portfolio/risk/signals/alerts) are still mock placeholders
+lib/            nav definitions, API fetch wrapper (api.ts), market data client (marketData.ts)
 styles/         design tokens (docs/ui-design-system.md)
 ```
+
+`/markets` and the dashboard's watchlist panel are wired to the real backend (`GET /api/v1/assets`, `/market/{symbol}`, `/market/{symbol}/history`) — the data itself is still mock market data end to end (docs/market-data.md), always labeled `SOURCE: MOCK`.
 
 Design reference: [docs/ui-design-system.md](../../docs/ui-design-system.md) and the [Command Center canvas](../../docs/design/command-center/).
