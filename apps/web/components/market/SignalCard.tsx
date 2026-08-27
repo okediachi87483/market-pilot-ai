@@ -1,4 +1,5 @@
 import { StatusTag, type MarketState } from "@/components/ui/StatusTag";
+import type { AIAnalysis, AISuggestedAction, AIUncertainty } from "@/lib/aiAnalyst";
 import type { PaperOrder } from "@/lib/paperTrading";
 import type { RiskEvaluation } from "@/lib/risk";
 import type { SignalResponse, SignalStrength, SignalType } from "@/lib/signals";
@@ -18,6 +19,19 @@ const STRENGTH_COLOR: Record<SignalStrength, string> = {
 const DECISION_COLOR: Record<RiskEvaluation["decision"], string> = {
   APPROVED: "var(--color-positive)",
   REJECTED: "var(--color-negative)",
+};
+
+const AI_ACTION_COLOR: Record<AISuggestedAction, string> = {
+  BUY: "var(--color-positive)",
+  SELL: "var(--color-negative)",
+  HOLD: "var(--color-neutral-signal)",
+  NO_ACTION: "var(--color-text-tertiary)",
+};
+
+const AI_UNCERTAINTY_COLOR: Record<AIUncertainty, string> = {
+  LOW: "var(--color-positive)",
+  MEDIUM: "var(--color-accent-amber)",
+  HIGH: "var(--color-negative)",
 };
 
 type LifecycleStage =
@@ -111,6 +125,11 @@ export function SignalCard({
   onExecutePaperOrder,
   paperExecutionLoading = false,
   paperExecutionError = null,
+  aiAnalysis = null,
+  onRunAiAnalysis,
+  aiAnalysisLoading = false,
+  aiAnalysisError = null,
+  aiUnavailable = false,
 }: {
   signal: SignalResponse;
   riskEvaluation?: RiskEvaluation | null;
@@ -121,6 +140,11 @@ export function SignalCard({
   onExecutePaperOrder?: () => void;
   paperExecutionLoading?: boolean;
   paperExecutionError?: string | null;
+  aiAnalysis?: AIAnalysis | null;
+  onRunAiAnalysis?: () => void;
+  aiAnalysisLoading?: boolean;
+  aiAnalysisError?: string | null;
+  aiUnavailable?: boolean;
 }) {
   const stage = currentStage(signal, riskEvaluation, paperOrder);
   const canRunRiskReview = signal.status === "CANDIDATE" && !riskEvaluation && onRunRiskReview;
@@ -193,6 +217,15 @@ export function SignalCard({
 
       <div className="flex flex-col gap-3 border-t border-border-subtle pt-3">
         <LifecycleStepper stage={stage} />
+
+        <AIAnalystSection
+          signal={signal}
+          aiAnalysis={aiAnalysis}
+          onRunAiAnalysis={onRunAiAnalysis}
+          aiAnalysisLoading={aiAnalysisLoading}
+          aiAnalysisError={aiAnalysisError}
+          aiUnavailable={aiUnavailable}
+        />
 
         {canRunRiskReview && (
           <div className="flex flex-col gap-2">
@@ -300,6 +333,151 @@ export function SignalCard({
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * The AI Analyst section (Step 20/21) — deliberately placed below the
+ * deterministic signal and above the Risk Engine's own decision, never
+ * merged with either: the AI's `suggested_action` is an opinion, never
+ * a trading decision (Step 13). Disagreement between the deterministic
+ * signal and the AI's suggestion is never hidden or softened — it's
+ * called out with its own explicit status line, not implied to mean
+ * the AI is "wrong" or "right."
+ */
+function AIAnalystSection({
+  signal,
+  aiAnalysis,
+  onRunAiAnalysis,
+  aiAnalysisLoading,
+  aiAnalysisError,
+  aiUnavailable,
+}: {
+  signal: SignalResponse;
+  aiAnalysis: AIAnalysis | null;
+  onRunAiAnalysis?: () => void;
+  aiAnalysisLoading: boolean;
+  aiAnalysisError: string | null;
+  aiUnavailable: boolean;
+}) {
+  const canRunAiAnalysis = !aiAnalysis && onRunAiAnalysis && !aiUnavailable;
+  const disagrees = aiAnalysis !== null && aiAnalysis.suggested_action !== signal.signal;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-2 p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">
+          AI Analyst
+        </span>
+        {aiAnalysis && (
+          <span className="font-mono text-[10px] text-text-tertiary">
+            {aiAnalysis.provider} / {aiAnalysis.model}
+          </span>
+        )}
+      </div>
+
+      {aiUnavailable && !aiAnalysis && (
+        <p className="text-[11px] text-text-tertiary">
+          AI Analyst unavailable — configure the Claude provider to enable analysis.
+        </p>
+      )}
+
+      {canRunAiAnalysis && (
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={onRunAiAnalysis}
+            disabled={aiAnalysisLoading}
+            className="self-start rounded-md border border-border-default bg-bg-1 px-3 py-1.5 text-xs font-semibold text-text-primary hover:bg-bg-3 disabled:opacity-50"
+          >
+            {aiAnalysisLoading ? "Analyzing…" : "Run AI Analysis"}
+          </button>
+          {aiAnalysisError && <p className="text-xs text-negative">{aiAnalysisError}</p>}
+        </div>
+      )}
+
+      {aiAnalysis && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <span
+              className="text-sm font-bold uppercase tracking-wide"
+              style={{ color: AI_ACTION_COLOR[aiAnalysis.suggested_action] }}
+            >
+              {aiAnalysis.suggested_action}
+            </span>
+            <span
+              className="rounded-sm border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
+              style={{
+                color: AI_UNCERTAINTY_COLOR[aiAnalysis.uncertainty],
+                borderColor: AI_UNCERTAINTY_COLOR[aiAnalysis.uncertainty],
+              }}
+            >
+              {aiAnalysis.uncertainty} uncertainty
+            </span>
+          </div>
+
+          {disagrees && (
+            <div
+              className="rounded-sm border px-2 py-1.5 text-[11px] font-semibold"
+              style={{ color: "var(--color-accent-amber)", borderColor: "var(--color-accent-amber)" }}
+            >
+              STATUS: Analysis disagreement — the deterministic signal is {signal.signal}, the AI
+              Analyst suggests {aiAnalysis.suggested_action}. Neither overrides the other.
+            </div>
+          )}
+
+          <div>
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+              Market Overview
+            </div>
+            <p className="text-[11px] text-text-secondary">{aiAnalysis.market_summary}</p>
+          </div>
+
+          <div>
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+              Thesis
+            </div>
+            <p className="text-[11px] text-text-secondary">{aiAnalysis.thesis}</p>
+          </div>
+
+          <EvidenceList label="Supporting Evidence" items={aiAnalysis.supporting_evidence} />
+          <EvidenceList label="Contradicting Evidence" items={aiAnalysis.contradicting_evidence} />
+          <EvidenceList label="Risks" items={aiAnalysis.risks} />
+          <EvidenceList label="Invalidating Conditions" items={aiAnalysis.invalidating_conditions} />
+
+          <div>
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+              Action Rationale
+            </div>
+            <p className="text-[11px] text-text-secondary">{aiAnalysis.action_rationale}</p>
+          </div>
+
+          <div className="text-[10px] text-text-tertiary">
+            Analytical interpretation only — the AI does not execute trades, size positions, or
+            override risk controls. Prompt v{aiAnalysis.prompt_version} &middot;{" "}
+            {new Date(aiAnalysis.generated_at).toLocaleString()}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EvidenceList({ label, items }: { label: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+        {label}
+      </div>
+      <ul className="flex flex-col gap-1">
+        {items.map((item) => (
+          <li key={item} className="text-[11px] text-text-secondary">
+            &middot; {item}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

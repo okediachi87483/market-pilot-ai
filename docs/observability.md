@@ -8,6 +8,8 @@ Every package logs structured JSON (not free-text) via a shared logger from `pac
 
 ## 2. Metrics (Prometheus)
 
+> **Status**: this section remains the Phase 1 plan — no phase through Phase 8 has wired up a `/metrics` endpoint or a Prometheus client library; that work is Phase 14 ("Observability (Prometheus/Grafana)" in the roadmap). Structured logging (§1) is real today for every phase, including the AI Analyst (docs/ai-analyst.md §16). The AI-specific metric names below (`marketpilot_ai_analysis_duration_seconds`, `marketpilot_ai_provider_errors_total`, `marketpilot_ai_tokens_total`) are the intended names *when* Phase 14 lands — Phase 8 deliberately did not add metrics infrastructure just for its own endpoints, matching the "proportional, no unnecessary infra" guidance for this phase specifically.
+
 Exposed at `/metrics` on the API process (and the scheduler process once split out per [architecture.md](architecture.md) §9), scraped by Prometheus, visualized in Grafana.
 
 | Metric | Type | Why it matters |

@@ -33,10 +33,24 @@ class Settings(BaseSettings):
     redis_db: int = 0
 
     # Represented architecturally per docs/ai-architecture.md; no key is
-    # required to run the Phase 2 foundation.
+    # required to run the Phase 2 foundation. Phase 8 (docs/ai-analyst.md)
+    # is the first phase that actually calls this provider — an empty
+    # key here means "AI status = unavailable/not configured", never a
+    # startup crash (Step 4).
     ai_provider: str = "anthropic"
     ai_model: str = "claude-sonnet-5"
     ai_provider_api_key: str | None = None
+
+    # Phase 8 cost controls (docs/ai-analyst.md §"Cost controls", Step
+    # 25) — bounded output, a request timeout, and a per-signal cooldown
+    # so a chatty client can't rack up unbounded Claude spend.
+    ai_analyst_max_output_tokens: int = 1024
+    ai_analyst_timeout_seconds: float = 30.0
+    ai_analyst_cooldown_minutes: int = 15
+
+    @property
+    def ai_configured(self) -> bool:
+        return bool(self.ai_provider_api_key)
 
     # Phase 6/7: the one simulated paper-trading account's starting cash
     # and equity — see docs/paper-trading.md §"Cash accounting". Read

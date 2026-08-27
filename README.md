@@ -15,7 +15,9 @@ Market Data -> Normalization -> Technical Analysis -> Signal Engine
    -> AI Analysis -> Risk Engine -> Paper Trading -> Portfolio -> Alerting -> Dashboard
 ```
 
-Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/market-data.md](docs/market-data.md), [docs/technical-analysis.md](docs/technical-analysis.md), [docs/signal-engine.md](docs/signal-engine.md), [docs/ai-architecture.md](docs/ai-architecture.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/paper-trading.md](docs/paper-trading.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
+Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/market-data.md](docs/market-data.md), [docs/technical-analysis.md](docs/technical-analysis.md), [docs/signal-engine.md](docs/signal-engine.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/paper-trading.md](docs/paper-trading.md), [docs/ai-analyst.md](docs/ai-analyst.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
+
+> **MarketPilot's AI Analyst provides analytical interpretation only. It does not execute trades, determine position sizing, override risk controls, or access brokerage accounts.** See [docs/ai-analyst.md](docs/ai-analyst.md).
 
 ## Technology stack
 
@@ -100,7 +102,7 @@ npm run build                # production build
 apps/
 ├── api/            FastAPI backend — see apps/api/README.md
 │   ├── app/services/{market_data,technical_analysis,signal_engine,
-│   │                  risk_engine,paper_trading}/   Phase 3-7 domains
+│   │                  risk_engine,paper_trading,ai_analyst}/   Phase 3-8 domains
 │   └── alembic/                    migrations
 └── web/            Next.js frontend — see apps/web/README.md
 docs/               architecture, design system, ADRs — see docs/architecture.md
@@ -115,15 +117,14 @@ docker-compose.yml
 Makefile
 ```
 
-`packages/` (the domain packages — `ai_engine`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data, technical analysis, the signal engine, the risk engine, and paper trading (Phase 3/4/5/6/7's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis,signal_engine,risk_engine,paper_trading}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in each phase's completion report. There is also no standalone `portfolio` package (docs/architecture.md §3's deviation note) — Phase 7's `paper_trading` package computes the portfolio state (equity, exposure, P/L, drawdown) both the risk engine and the dashboard need.
+`packages/` (the domain packages — `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data, technical analysis, the signal engine, the risk engine, paper trading, and the AI Analyst (Phase 3/4/5/6/7/8's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis,signal_engine,risk_engine,paper_trading,ai_analyst}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in each phase's completion report. There is also no standalone `portfolio` package (docs/architecture.md §3's deviation note) — Phase 7's `paper_trading` package computes the portfolio state (equity, exposure, P/L, drawdown) both the risk engine and the dashboard need.
 
 ## Current phase
 
-**Phase 7 — Deterministic Paper Trading Engine.** Consumes only `RISK_APPROVED` signals — never `CANDIDATE` or `RISK_REJECTED` — and turns them into simulated MARKET orders: a fill at the current market price, a fee, a position (opened, added-to via weighted average, or reduced/closed with realized P/L), and a real cash ledger, all in one committed transaction (no partial financial state possible). The Risk Engine's Phase 6 checks now react to this *real* portfolio state instead of a clean-slate placeholder — concurrent positions, exposure, daily loss, drawdown, and loss cooldown are all genuinely enforced. No real broker, no real money, no short selling, no AI. New endpoints: `GET /api/v1/paper/portfolio`, `/positions`, `/orders` (`GET`, `/{id}`), `/fills`, `POST /paper/execute/{signal_id}`, `POST /paper/positions/{symbol}/close`. The `/paper` route is now a real Paper Trading Center; the Signal Center shows a signal's progress all the way through `Risk Approved → Paper Execution → Filled → Position Open`; the dashboard shows real equity/P&L instead of a mock placeholder. Full detail: [docs/paper-trading.md](docs/paper-trading.md).
+**Phase 8 — AI Analyst.** Claude-based analytical interpretation layered over the deterministic pipeline — `SIGNAL ENGINE → AI ANALYST → RISK ENGINE → PAPER TRADING`, with the AI strictly a read-only, parallel consumer of a signal: it cannot execute trades, submit orders, modify positions, modify risk rules or stop-loss/take-profit values, determine position size, or override any Risk Engine decision, not by policy but structurally — its output schema has no field for any of those, and the Risk Engine does not read `AIAnalysis` at all. Claude's structured tool-use forces the response shape; a two-layer validator (schema + content-safety scan) rejects anything malformed, fabricated, or that echoes a prompt-injection attempt before it can ever be persisted. New endpoints: `GET /api/v1/ai/status`, `POST /ai/analyze/{signal_id}`, `GET /ai/analyses` (`GET`, `/{id}`), `GET /ai/signals/{signal_id}`. The `/ai-analyst` route is now a real AI Analyst Center (reusing the Signal Center so the AI's analysis, the deterministic signal, the risk decision, and the paper trade status are always shown together, never in isolation); disagreement between the AI's suggestion and the deterministic signal is always shown explicitly, never hidden; the dashboard shows a real AI preview panel with an explicit "unavailable" state when no provider key is configured. No real broker, no real money, no fabricated confidence. Full detail: [docs/ai-analyst.md](docs/ai-analyst.md).
 
 ## Upcoming phases
 
-8. AI analyst (Claude-based, schema-validated, risk-gated)
 9. MarketPilot Command Center — full data-wired UI
 10. Portfolio analytics
 11. Alerting + profit protection

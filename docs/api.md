@@ -45,7 +45,7 @@ FastAPI, Pydantic v2 schemas for every request/response, OpenAPI docs auto-gener
 
 ### Technical analysis — implemented in Phase 4, see [technical-analysis.md](technical-analysis.md) §9
 
-> Deviation from the Phase 1 sketch: this document originally reserved `GET /analysis/{symbol}` for a future *AI* analysis endpoint (§"AI analysis" below, as originally sketched). Phase 4 built the deterministic technical-analysis engine first and claimed this path for it, since it's the more fundamental layer and matches the plan's own pipeline order (technical analysis before AI). A future AI Analyst endpoint (Phase 8) will need a **different** path — `/ai-analysis/{symbol}` is the natural choice — to avoid colliding with this one.
+> Deviation from the Phase 1 sketch: this document originally reserved `GET /analysis/{symbol}` for a future *AI* analysis endpoint (§"AI analysis" below, as originally sketched). Phase 4 built the deterministic technical-analysis engine first and claimed this path for it, since it's the more fundamental layer and matches the plan's own pipeline order (technical analysis before AI). Phase 8's AI Analyst endpoints ended up under `/ai/*` (§"AI Analyst" below) rather than the `/ai-analysis/{symbol}` this note originally anticipated, since the AI Analyst is signal-scoped (`POST /ai/analyze/{signal_id}`), not symbol-scoped like this endpoint.
 
 | | |
 |---|---|
@@ -62,6 +62,18 @@ FastAPI, Pydantic v2 schemas for every request/response, OpenAPI docs auto-gener
 | **GET /signals** | List signals. Query: `symbol`, `strategy_id`, `status`, `interval` (all optional filters), `limit`. |
 | **GET /signals/{id}** | Single signal by UUID, with full reasoning (`reasons`, `supporting_features`, `invalidating_conditions`). `404 not_found` if unknown. |
 | **POST /signals/evaluate/{symbol}** | Evaluates `symbol` against the `trend_momentum` strategy right now and returns the resulting `CANDIDATE` signal (existing, deduplicated, or newly created — see `was_newly_created`). No request body. Never executes anything — a read of what the deterministic strategy currently suggests. `404 not_found` if the symbol is unknown; `422 validation_error` if `interval` is unsupported. |
+
+### AI Analyst — implemented in Phase 8, see [ai-analyst.md](ai-analyst.md) §13
+
+> Analytical interpretation only — no endpoint below executes a trade, determines position size, or overrides a risk decision. `POST /ai/analyze/{signal_id}` is signal-scoped, not symbol-scoped, unlike `GET /analysis/{symbol}` above (§ note there).
+
+| | |
+|---|---|
+| **GET /ai/status** | `{configured, available, provider, model}` — never a key or secret. `available` is a proxy for `configured`, not a live provider ping. |
+| **POST /ai/analyze/{signal_id}** | Analyzes a signal's current evidence (technical data, the signal itself, and the risk decision if one exists) and returns the resulting analysis — an existing one if within the cooldown window (§"Idempotency" in ai-analyst.md §12), otherwise newly generated. `404` unknown signal; `503` provider not configured or the Claude call failed; `422` if the response fails schema or content-safety validation. |
+| **GET /ai/analyses** | List analyses. Query: `symbol`, `signal_id`, `limit`. |
+| **GET /ai/analyses/{id}** | Single analysis by UUID. `404` if unknown. |
+| **GET /ai/signals/{signal_id}** | Equivalent to `GET /ai/analyses?signal_id=...`, provided as its own path alongside the query-filtered list. |
 
 ### Paper trading — implemented in Phase 7, see [paper-trading.md](paper-trading.md) §18
 

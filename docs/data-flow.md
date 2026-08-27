@@ -72,7 +72,9 @@ sequenceDiagram
     end
 ```
 
-Full schema and safety rationale: [ai-architecture.md](ai-architecture.md).
+Full schema and safety rationale: [ai-analyst.md](ai-analyst.md) (supersedes this sketch and the Phase 1 [ai-architecture.md](ai-architecture.md) — see that doc's §9 for the specific deviations). The as-built flow differs in one structural way from the diagram above: `AIAnalystService` reads a `Signal` directly (any status, not gated on being "new/changed" this cycle) and the AI Analyst is not in the Risk Engine's read path at all (§5 below) — it is a parallel, independent consumer of the same `Signal`, not a required upstream step.
+
+> **Deviation, Phase 8**: unlike the diagram above, a failed/invalid AI response does not write an `AuditLog` entry (no dedicated `audit_logs` table exists in the as-built schema — see [database.md](database.md)); it is a structured log line plus a `422`/`503` API response, and simply results in no `AIAnalysis` row (docs/ai-analyst.md §14).
 
 ## 4. Signal generation flow (detail)
 
@@ -89,9 +91,11 @@ Re-running the same rule set against the same `Indicators` row always produces t
 
 ## 5. Risk validation flow (detail)
 
+> **Deviation, Phase 8**: the diagram below (Phase 1 sketch) shows `AIAnalysis.suggested_action` feeding the Risk Engine. As built, the Risk Engine reads `Signal.signal` (Phase 5's deterministic direction) directly and has no dependency on, or awareness of, `AIAnalysis` at all — see [ai-analyst.md](ai-analyst.md) §2. The check sequence itself (11 checks, not the 6 sketched below) is unchanged in spirit; see [risk-engine.md](risk-engine.md) for the authoritative, as-built pipeline.
+
 ```mermaid
 flowchart LR
-    S[AIAnalysis.suggested_action] --> RE[Risk Engine]
+    S[Signal.signal] --> RE[Risk Engine]
     RE --> C1{Position size <= max?}
     C1 -->|no| REJ[REJECTED]
     C1 -->|yes| C2{Portfolio exposure <= max?}

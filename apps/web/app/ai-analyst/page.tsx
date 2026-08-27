@@ -1,7 +1,5 @@
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { AIAnalystCenter } from "@/components/market/AIAnalystCenter";
 
 export default function AiAnalystPage() {
-  return (
-    <ScreenPlaceholder description="DATA / ANALYSIS / SIGNAL / RISK / ACTION breakdown for one asset. Arrives with the ai-engine package." />
-  );
+  return <AIAnalystCenter />;
 }

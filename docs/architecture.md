@@ -36,6 +36,8 @@ The one invariant that shapes every other decision in this document: **the AI la
 
 > **Deviation, Phase 7**: the sketch above had `risk-engine → portfolio → paper-trading → risk-engine` — a circular dependency between three separate packages. What actually shipped folds "portfolio" into `paper-trading` (`app/services/paper_trading/portfolio.py::compute_portfolio_state()` is the one authoritative computation — equity, exposure, P/L, drawdown), and `risk-engine` depends on it directly for real portfolio state (`risk_engine/portfolio_state.py`, replacing the Phase 6 clean-slate placeholder) — see [paper-trading.md](paper-trading.md) §10/§13. No standalone `portfolio` package exists; Phase 10 ("Portfolio analytics" in the roadmap below) may still add one for analytics beyond what paper-trading's own state computation already provides (win rate, longer equity-curve history), but the basic P&L/exposure/drawdown numbers the risk engine and the dashboard need are already real as of this phase.
 
+> **Deviation, Phase 8**: the `ai-engine` package described in the table above shipped as `app/services/ai_analyst/`, matching every prior phase's already-established move away from a standalone `packages/*` tree. Its output schema also differs from the Phase 1 sketch — no numeric `confidence`, no price-level fields (`entry_zone_*`, `stop_loss`, `take_profit_*`) — see [ai-analyst.md](ai-analyst.md) §9 for the full list of deviations and why. The core invariant this document states in §1 ("the AI layer can suggest, never execute") is unchanged and, if anything, more strictly enforced: the Risk Engine does not read `AIAnalysis` at all (docs/ai-analyst.md §2), rather than reading a suggested action from it as §6 below sketches.
+
 `apps/api` is the composition root: it wires FastAPI routers to package services, owns the scheduler (APScheduler or equivalent, running the ingestion → ... → alerting pipeline on an interval), and owns nothing else — no business logic lives in `apps/api`.
 
 ## 4. Folder structure
@@ -129,7 +131,7 @@ Run on a scheduled interval by `apps/api`'s scheduler (not per-request):
                      entry by the package that made it
 ```
 
-Full sequencing, storage locations, and a Mermaid diagram are in [data-flow.md](data-flow.md). The AI analysis, signal generation, risk validation, paper-trading, and alert flows each get their own detailed walkthrough there and in their dedicated docs ([ai-architecture.md](ai-architecture.md), [risk-engine.md](risk-engine.md), [profit-protection.md](profit-protection.md)).
+Full sequencing, storage locations, and a Mermaid diagram are in [data-flow.md](data-flow.md). The AI analysis, signal generation, risk validation, paper-trading, and alert flows each get their own detailed walkthrough there and in their dedicated docs ([ai-analyst.md](ai-analyst.md) — supersedes the Phase 1 [ai-architecture.md](ai-architecture.md) sketch, [risk-engine.md](risk-engine.md), [profit-protection.md](profit-protection.md)).
 
 ## 7. Failure scenarios
 
@@ -144,7 +146,7 @@ Full sequencing, storage locations, and a Mermaid diagram are in [data-flow.md](
 
 ## 8. Security boundaries
 
-Full detail in [security.md](security.md). The boundary that matters architecturally: the AI provider is called with read-only context (signals, indicators, portfolio *summary*, never credentials or write access), and its response is validated against a strict schema before it can influence anything — a malformed or adversarial LLM response is data, not code, and cannot reach the risk engine's decision logic except through the fields that schema defines (see [ai-architecture.md](ai-architecture.md) §"Why the AI cannot bypass risk").
+Full detail in [security.md](security.md). The boundary that matters architecturally: the AI provider is called with read-only context (signals, indicators, portfolio *summary*, never credentials or write access), and its response is validated against a strict schema before it can influence anything — a malformed or adversarial LLM response is data, not code, and cannot reach the risk engine's decision logic except through the fields that schema defines (see [ai-analyst.md](ai-analyst.md) §2/§7, "Non-negotiable boundaries" and the two-layer output validation).
 
 ## 9. Scalability considerations
 

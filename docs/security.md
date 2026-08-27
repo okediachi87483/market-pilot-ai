@@ -7,7 +7,8 @@ MarketPilot handles no real money and no real brokerage credentials in this arch
 - No secret is ever committed. `.env.example` documents every required variable name with a placeholder or dummy value, never a real one; `.env` is git-ignored.
 - Local development: environment variables loaded from `.env` via `docker-compose.yml`'s `env_file`.
 - Production: a managed secret store (AWS Secrets Manager or SSM Parameter Store, provisioned via Terraform — not applied without explicit approval per the workflow rules) injects secrets as environment variables at container start; secrets are never baked into a Docker image layer.
-- Required secrets, minimum set: `DATABASE_URL`, `REDIS_URL`, `AI_PROVIDER_API_KEY`, `JWT_SIGNING_KEY` (once auth is fully implemented). None have defaults in code — a missing required secret fails startup loudly, not silently with an insecure fallback.
+- Required secrets, minimum set: `DATABASE_URL`, `REDIS_URL`, `JWT_SIGNING_KEY` (once auth is fully implemented). None have defaults in code — a missing required secret fails startup loudly, not silently with an insecure fallback.
+- **Deviation, Phase 8**: `AI_PROVIDER_API_KEY` is treated differently, deliberately — it is *optional*, not required. An empty key does not fail startup; `Settings.ai_configured` is `False`, `GET /ai/status` reports `configured: false`, and every AI Analyst endpoint responds `503` rather than crashing the process. This matches Step 4's explicit requirement that the platform run fully (market data, signals, risk, paper trading) with no AI provider configured at all — see [ai-analyst.md](ai-analyst.md) §4.
 
 ## 2. Environment configuration
 
@@ -39,7 +40,7 @@ Every state-changing action across every package writes to `audit_logs` in the s
 ## 8. Sensitive-data handling
 
 - `password_hash` is never included in any API response schema — not omitted by convention, but structurally absent from the Pydantic response model, so it cannot be accidentally serialized.
-- AI provider calls ([ai-architecture.md](ai-architecture.md) §3) receive only the market/signal/portfolio-summary context they need — never credentials, never other users' data, never `risk_rules` values.
+- AI provider calls ([ai-analyst.md](ai-analyst.md) §5) receive only a bounded market/technical/signal/risk-decision context — never credentials, never other users' data, never `risk_policies` write access. The as-built context has no portfolio-summary field (unlike the Phase 1 sketch this line originally described); the risk section it does include is the *outcome* of a `RiskEvaluation` (decision + reasons), for interpretation only, never a value the AI could feed back into a risk decision.
 - Logs are structured (see [observability.md](observability.md)) and scrubbed of secret-shaped values (a logging filter redacts anything matching configured secret key names) before being written or shipped.
 
 ## 9. Dependency security

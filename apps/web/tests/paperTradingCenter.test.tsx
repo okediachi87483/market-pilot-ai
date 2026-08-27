@@ -157,9 +157,10 @@ describe("PaperTradingCenter", () => {
 
     await waitFor(() =>
       expect(
-        (fetch as ReturnType<typeof vi.fn>).mock.calls.some(([url, init]: [string, RequestInit?]) =>
-          url.includes("/positions/AAPL/close") && init?.method === "POST",
-        ),
+        (fetch as ReturnType<typeof vi.fn>).mock.calls.some((call) => {
+          const [url, init] = call as [string, RequestInit?];
+          return url.includes("/positions/AAPL/close") && init?.method === "POST";
+        }),
       ).toBe(true),
     );
   });

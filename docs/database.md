@@ -27,7 +27,7 @@ erDiagram
     assets ||--o{ indicators : has
     assets ||--o{ signals : has
     assets ||--o{ positions : held_as
-    signals ||--o| ai_analyses : analyzed_by
+    signals ||--o{ ai_analyses : analyzed_by
     portfolios ||--|| risk_rules : governed_by
     portfolios ||--o{ positions : holds
     portfolios ||--o{ orders : places
@@ -118,7 +118,11 @@ erDiagram
 | `generated_at` | TIMESTAMPTZ NOT NULL | |
 | Indexes | `(asset_id, generated_at DESC)`, `(status)` | |
 
-### `ai_analyses`
+### `ai_analyses` — superseded by Phase 8, see [ai-analyst.md](ai-analyst.md) §10
+
+> The sketch below (kept for historical reference) had `market_state`/`trend`/`momentum`/`volume_assessment` enums, a numeric `confidence NUMERIC(5,2)`, `suggested_action` as `long`/`short`/`hold`/`close`/`none`, and price-level fields (`entry_zone_*`, `stop_loss`, `take_profit_*`). None of that shipped: the as-built table has no numeric confidence field at all (only a qualitative `uncertainty` LOW/MEDIUM/HIGH enum) and no price-level fields whatsoever — those never leave the Risk Engine. `suggested_action` is `BUY`/`SELL`/`HOLD`/`NO_ACTION`, matching Phase 5's own `Signal.signal` vocabulary. Full as-built schema: ai-analyst.md §10.
+
+### `ai_analyses` (Phase 1 sketch — see note above)
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID PK | |
@@ -150,7 +154,7 @@ erDiagram
 
 ### `positions`, `orders`, `trades` — superseded by Phase 7, see [paper-trading.md](paper-trading.md) §2
 
-> This sketch (below, kept for historical reference) assumed a `portfolios`/`users` table that was never built — every prior phase (3 through 7) has stayed single-implicit-user, with no auth or multi-portfolio system yet. What Phase 7 actually shipped is `paper_accounts` (one row, replacing `portfolios.cash`), `paper_positions`, `paper_orders`, and `paper_fills` (replacing `trades`) — no `portfolio_id` anywhere, `orders.limit_price`/`idempotency_key` replaced by `signal_id UNIQUE` (execution is signal-driven, not user-submitted with an arbitrary price), and no `ai_analysis_id` (no AI layer exists yet — Phase 8). Full current schema: paper-trading.md §2.
+> This sketch (below, kept for historical reference) assumed a `portfolios`/`users` table that was never built — every prior phase (3 through 8) has stayed single-implicit-user, with no auth or multi-portfolio system yet. What Phase 7 actually shipped is `paper_accounts` (one row, replacing `portfolios.cash`), `paper_positions`, `paper_orders`, and `paper_fills` (replacing `trades`) — no `portfolio_id` anywhere, `orders.limit_price`/`idempotency_key` replaced by `signal_id UNIQUE` (execution is signal-driven, not user-submitted with an arbitrary price). Phase 8 (now built — see [ai-analyst.md](ai-analyst.md) §10) did not add an `ai_analysis_id` column to `paper_orders` either: a paper order's execution is driven exclusively by `RiskEvaluation`/`Signal`, never by an `AIAnalysis`, so there is no relationship for such a column to express. Full current schema: paper-trading.md §2.
 
 ### `positions` (Phase 1 sketch — see note above)
 | Column | Type | Notes |

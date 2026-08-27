@@ -1,3 +1,4 @@
+import { AIAnalystPreview } from "@/components/market/AIAnalystPreview";
 import { AlertPreview } from "@/components/market/AlertPreview";
 import { MarketStateVisualization } from "@/components/market/MarketStateVisualization";
 import { MarketStatusPreview } from "@/components/market/MarketStatusPreview";
@@ -8,8 +9,9 @@ import { WatchlistPreview } from "@/components/market/WatchlistPreview";
 
 /**
  * MarketPilot Command Center — see docs/ui-screen-map.md (/dashboard).
- * Market State (Phase 4), Signals (Phase 5), Risk (Phase 6), and
- * Portfolio (Phase 7, real paper-trading equity/P&L) are real,
+ * Market State (Phase 4), Signals (Phase 5), Risk (Phase 6), Portfolio
+ * (Phase 7, real paper-trading equity/P&L), and the AI Analyst (Phase 8,
+ * analytical interpretation only — see docs/ai-analyst.md) are real,
  * backend-calculated data; alerts remain a clearly-labeled mock
  * placeholder until its owning phase lands.
  */
@@ -30,6 +32,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        <AIAnalystPreview />
         <AlertPreview />
       </div>
     </div>

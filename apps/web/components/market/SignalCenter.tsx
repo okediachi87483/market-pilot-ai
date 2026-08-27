@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { type AIAnalysis, analyzeSignal, getAIStatus } from "@/lib/aiAnalyst";
 import { ApiError } from "@/lib/api";
 import { type Asset, getAssets } from "@/lib/marketData";
 import { type PaperOrder, executePaperOrder } from "@/lib/paperTrading";
@@ -33,6 +34,10 @@ export function SignalCenter() {
   const [paperOrder, setPaperOrder] = useState<PaperOrder | null>(null);
   const [paperExecutionLoading, setPaperExecutionLoading] = useState(false);
   const [paperExecutionError, setPaperExecutionError] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  const [aiAnalysisError, setAiAnalysisError] = useState<string | null>(null);
+  const [aiUnavailable, setAiUnavailable] = useState(false);
 
   useEffect(() => {
     getAssets()
@@ -41,6 +46,9 @@ export function SignalCenter() {
         // Falls back to the fixed symbol list; the evaluation panel
         // below surfaces its own error state.
       });
+    getAIStatus()
+      .then((status) => setAiUnavailable(!status.available))
+      .catch(() => setAiUnavailable(true));
   }, []);
 
   useEffect(() => {
@@ -51,6 +59,8 @@ export function SignalCenter() {
     setRiskReviewError(null);
     setPaperOrder(null);
     setPaperExecutionError(null);
+    setAiAnalysis(null);
+    setAiAnalysisError(null);
 
     evaluateSignal(symbol, "1h")
       .then((result) => {
@@ -91,6 +101,18 @@ export function SignalCenter() {
         setRiskReviewError(err instanceof ApiError ? err.message : "Risk review failed.");
       })
       .finally(() => setRiskReviewLoading(false));
+  }
+
+  function handleRunAiAnalysis() {
+    if (!signal) return;
+    setAiAnalysisLoading(true);
+    setAiAnalysisError(null);
+    analyzeSignal(signal.id)
+      .then(setAiAnalysis)
+      .catch((err: unknown) => {
+        setAiAnalysisError(err instanceof ApiError ? err.message : "AI analysis failed.");
+      })
+      .finally(() => setAiAnalysisLoading(false));
   }
 
   function handleExecutePaperOrder() {
@@ -152,6 +174,11 @@ export function SignalCenter() {
           onExecutePaperOrder={handleExecutePaperOrder}
           paperExecutionLoading={paperExecutionLoading}
           paperExecutionError={paperExecutionError}
+          aiAnalysis={aiAnalysis}
+          onRunAiAnalysis={handleRunAiAnalysis}
+          aiAnalysisLoading={aiAnalysisLoading}
+          aiAnalysisError={aiAnalysisError}
+          aiUnavailable={aiUnavailable}
         />
       )}
     </div>

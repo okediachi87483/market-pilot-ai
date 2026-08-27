@@ -1,11 +1,11 @@
 # MarketPilot AI — UI Screen Map
 
-Thirteen routes (`/paper` added in Phase 7). Desktop is the primary experience (see [ui-design-system.md](ui-design-system.md) §1); mobile intelligently re-prioritizes rather than shrinking the desktop layout — each screen below states what that means concretely, not "responsive."
+Thirteen routes (`/paper` added in Phase 7; `/ai-analyst` implemented for real in Phase 8, see below — it existed as a placeholder route before then). Desktop is the primary experience (see [ui-design-system.md](ui-design-system.md) §1); mobile intelligently re-prioritizes rather than shrinking the desktop layout — each screen below states what that means concretely, not "responsive."
 
 ## `/dashboard` — Command Center
 
 - **Primary user goal**: answer "what is the state of the market and my portfolio, right now?" in one glance.
-- **Important information**: global market status, AI market assessment (signature instrument), watchlist, active signals, portfolio performance, risk exposure, open positions, recent alerts, activity timeline.
+- **Important information**: global market status, AI Analyst preview (latest analysis's thesis/action/uncertainty alongside the deterministic signal and risk decision it was based on — see [ai-analyst.md](ai-analyst.md) §18), watchlist, active signals, portfolio performance, risk exposure, open positions, recent alerts, activity timeline.
 - **Primary actions**: open an asset's AI Analyst view; open a signal's full reasoning.
 - **Secondary actions**: add/remove a watchlist symbol inline; mark an alert read.
 - **Desktop layout**: three-column hero row (AI assessment / portfolio / risk), then watchlist+signals row, then positions+alerts row, then a full-width activity timeline — see the [Command Center mockup](../design/command-center/).
@@ -38,14 +38,17 @@ Thirteen routes (`/paper` added in Phase 7). Desktop is the primary experience (
 - **Desktop layout**: filterable table/list, expandable rows using the signal card component.
 - **Mobile behavior**: filters collapse into a single sheet/drawer; rows are pre-collapsed cards, tap to expand (matches the signal card's own collapsed/expanded design).
 
-## `/ai-analyst`
+## `/ai-analyst` — AI Analyst Center (implemented in Phase 8, see [ai-analyst.md](ai-analyst.md) §18)
 
-- **Primary user goal**: understand, for one specific asset, what the AI sees and why — with DATA/ANALYSIS/SIGNAL/RISK/ACTION kept visually distinct (see [ai-architecture.md](ai-architecture.md), [ui-design-system.md](ui-design-system.md)).
-- **Important information**: raw indicator data, narrative analysis, signal recap with supporting/contradicting indicators, risk level and price zones, thesis invalidation.
-- **Primary actions**: switch analyzed asset; proceed to `/trades` to submit a paper order (still gated by the risk engine).
-- **Secondary actions**: add asset to watchlist; view the signal's full history.
-- **Desktop layout**: single-column, ordered top-to-bottom exactly DATA → ANALYSIS → SIGNAL → RISK → ACTION (mirrors the mockup at [`AIAnalyst.dc.html`](../design/command-center/AIAnalyst.dc.html)) — the vertical order itself teaches the platform's DATA → interpretation → decision model.
-- **Mobile behavior**: same section order, each section becomes a collapsible accordion so the page doesn't require excessive scrolling to reach ACTION; DATA and ANALYSIS collapse by default, SIGNAL/RISK/ACTION stay expanded since they're what most users came for.
+> Deviation from the Phase 1 sketch: rather than a bespoke DATA → ANALYSIS → SIGNAL → RISK → ACTION accordion, Phase 8 reused the Signal Center's own symbol-evaluate panel (`SignalCenter.tsx`, embedded directly, not duplicated) so the AI's analysis, the deterministic signal, the risk decision, and the paper trade status are always the same live view — never a separately-fetched, potentially-inconsistent copy — plus a "Recent AI Analyses" history list across symbols below it.
+
+- **Primary user goal**: understand, for one specific asset, what the AI sees and why, alongside — not instead of — the deterministic signal, risk decision, and paper trade status that actually govern the platform's behavior.
+- **Important information**: market overview, AI thesis, supporting/contradicting evidence, risks, invalidating conditions, AI suggested action, qualitative uncertainty (never a numeric confidence), the deterministic signal, the risk decision, paper trade status, and — when the AI's suggestion differs from the deterministic signal — an explicit, never-hidden "Analysis disagreement" status.
+- **Primary actions**: switch analyzed asset (symbol selector); run AI analysis; proceed through risk review and paper execution from the same card (unchanged from the Signal Center, Phase 6/7).
+- **Secondary actions**: browse recent AI analyses across symbols.
+- **Desktop layout**: single-column — symbol selector and signal card (with the AI Analyst section between the deterministic signal and the risk/paper-trade lifecycle) on top, recent-analyses history table below.
+- **Mobile behavior**: same vertical order; the evidence lists (supporting/contradicting evidence, risks, invalidating conditions) remain always-visible rather than collapsing, since Step 21's disagreement-visibility requirement means nothing about the AI's reasoning should be hidden behind an extra tap.
+- **Unavailable state**: when `AI_PROVIDER_API_KEY` isn't configured, an explicit "AI Analyst unavailable — configure the Claude provider to enable analysis." message replaces the "Run AI Analysis" action — never a blank or broken-looking section.
 
 ## `/paper` — Paper Trading Center (Phase 7, not in the original sketch)
 
