@@ -4,7 +4,11 @@ export type MarketState =
   | "NEUTRAL"
   | "HIGH_RISK"
   | "MARKET_CLOSED"
-  | "VOLATILITY_EVENT";
+  | "VOLATILITY_EVENT"
+  | "SIDEWAYS"
+  | "HIGH_VOLATILITY"
+  | "LOW_VOLATILITY"
+  | "INSUFFICIENT_DATA";
 
 const STATE_META: Record<MarketState, { label: string; colorVar: string }> = {
   BULLISH: { label: "BULLISH", colorVar: "var(--color-positive)" },
@@ -13,6 +17,12 @@ const STATE_META: Record<MarketState, { label: string; colorVar: string }> = {
   HIGH_RISK: { label: "HIGH RISK", colorVar: "var(--color-accent-amber)" },
   MARKET_CLOSED: { label: "MARKET CLOSED", colorVar: "var(--color-text-tertiary)" },
   VOLATILITY_EVENT: { label: "VOLATILITY EVENT", colorVar: "var(--color-accent-amber)" },
+  // Technical-analysis regime states (docs/technical-analysis.md §"Market
+  // regime") — detected conditions, not trade calls.
+  SIDEWAYS: { label: "SIDEWAYS", colorVar: "var(--color-neutral-signal)" },
+  HIGH_VOLATILITY: { label: "HIGH VOLATILITY", colorVar: "var(--color-accent-amber)" },
+  LOW_VOLATILITY: { label: "LOW VOLATILITY", colorVar: "var(--color-text-tertiary)" },
+  INSUFFICIENT_DATA: { label: "INSUFFICIENT DATA", colorVar: "var(--color-text-tertiary)" },
 };
 
 function StateGlyph({ state }: { state: MarketState }) {
@@ -26,6 +36,7 @@ function StateGlyph({ state }: { state: MarketState }) {
         <path d="M10 16 L3 5 L17 5 Z" fill="currentColor" />
       );
     case "NEUTRAL":
+    case "SIDEWAYS":
       return <rect x="4" y="9" width="12" height="2" rx="1" fill="currentColor" />;
     case "HIGH_RISK":
       return (
@@ -43,12 +54,34 @@ function StateGlyph({ state }: { state: MarketState }) {
         </>
       );
     case "VOLATILITY_EVENT":
+    case "HIGH_VOLATILITY":
       return (
         <path
           d="M2 10 L6 10 L8 4 L11 16 L13 10 L18 10"
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
+        />
+      );
+    case "LOW_VOLATILITY":
+      return (
+        <path
+          d="M2 10 Q6 8.5 10 10 T18 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      );
+    case "INSUFFICIENT_DATA":
+      return (
+        <circle
+          cx="10"
+          cy="10"
+          r="7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeDasharray="2.5 2.5"
         />
       );
   }

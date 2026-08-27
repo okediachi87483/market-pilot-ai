@@ -18,19 +18,54 @@ const QUOTE_RESPONSE = {
   },
 };
 
-const HISTORY_RESPONSE = {
+const INDICATOR_SERIES_RESPONSE = {
   symbol: "AAPL",
   asset_id: "11111111-1111-1111-1111-111111111111",
   interval: "1h",
   source: "mock",
   is_mock: true,
   start: "2024-06-01T00:00:00Z",
-  end: "2024-06-01T05:00:00Z",
+  end: "2024-06-01T01:00:00Z",
   count: 2,
-  bars: [
-    { timestamp: "2024-06-01T00:00:00Z", open: "190", high: "191", low: "189", close: "190.5", volume: "1000" },
-    { timestamp: "2024-06-01T01:00:00Z", open: "190.5", high: "192", low: "190", close: "191.5", volume: "1100" },
+  points: [
+    {
+      timestamp: "2024-06-01T00:00:00Z", close: 190.5, sma20: null, sma50: null, sma200: null,
+      ema9: null, ema21: null, ema50: null, ema200: null, rsi14: null, macd: null,
+      macd_signal: null, macd_histogram: null, stochastic_k: null, stochastic_d: null,
+      atr14: null, bollinger_upper: null, bollinger_middle: null, bollinger_lower: null,
+      bollinger_width: null, volume: 1000, volume_sma: null, relative_volume: null,
+    },
+    {
+      timestamp: "2024-06-01T01:00:00Z", close: 191.5, sma20: null, sma50: null, sma200: null,
+      ema9: null, ema21: null, ema50: null, ema200: null, rsi14: null, macd: null,
+      macd_signal: null, macd_histogram: null, stochastic_k: null, stochastic_d: null,
+      atr14: null, bollinger_upper: null, bollinger_middle: null, bollinger_lower: null,
+      bollinger_width: null, volume: 1100, volume_sma: null, relative_volume: null,
+    },
   ],
+};
+
+const ANALYSIS_RESPONSE = {
+  symbol: "AAPL",
+  asset_id: "11111111-1111-1111-1111-111111111111",
+  interval: "1h",
+  source: "mock",
+  is_mock: true,
+  calculated_at: "2024-06-01T01:00:00Z",
+  candle_count: 60,
+  price: { timestamp: "2024-06-01T01:00:00Z", close: 191.5 },
+  indicators: {
+    trend: { sma20: 190, sma50: null, sma200: null, ema9: 191, ema21: 190.5, ema50: null, ema200: null },
+    momentum: { rsi14: 55, macd: 0.2, macd_signal: 0.1, macd_histogram: 0.1, stochastic_k: 60, stochastic_d: 58 },
+    volatility: { atr14: 1.2, bollinger_upper: 193, bollinger_middle: 190, bollinger_lower: 187, bollinger_width: 0.03 },
+    volume: { volume: 1100, volume_sma: 1000, relative_volume: 1.1 },
+  },
+  features: {
+    price_above_ema21: true, ema9_above_ema21: true, ema21_above_ema50: null, ema50_above_ema200: null,
+    trend_alignment_score: 1, trend_alignment_label: "partial", trend_direction: "bullish",
+    rsi_state: "neutral", macd_state: "bullish", volume_state: "normal", volatility_state: "normal",
+  },
+  regime: { regime: "BULLISH", reasons: ["trend checks lean bullish with partial alignment"] },
 };
 
 const ASSETS_RESPONSE = [
@@ -43,6 +78,14 @@ function jsonResponse(body: unknown, ok = true, status = 200) {
     status,
     json: async () => body,
   } as Response;
+}
+
+function routeFetch(url: string) {
+  if (url.includes("/assets")) return Promise.resolve(jsonResponse(ASSETS_RESPONSE));
+  if (url.includes("/indicators")) return Promise.resolve(jsonResponse(INDICATOR_SERIES_RESPONSE));
+  if (url.includes("/analysis/")) return Promise.resolve(jsonResponse(ANALYSIS_RESPONSE));
+  if (url.includes("/market/")) return Promise.resolve(jsonResponse(QUOTE_RESPONSE));
+  return Promise.resolve(jsonResponse({ error: { code: "not_found", message: "unhandled route" } }, false, 404));
 }
 
 describe("MarketExplorer", () => {
@@ -60,21 +103,19 @@ describe("MarketExplorer", () => {
     expect(screen.getByTestId("market-explorer-loading")).toBeInTheDocument();
   });
 
-  it("renders quote and history data from the API, with a mock source label", async () => {
-    (fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
-      if (url.includes("/assets")) return Promise.resolve(jsonResponse(ASSETS_RESPONSE));
-      if (url.includes("/history")) return Promise.resolve(jsonResponse(HISTORY_RESPONSE));
-      return Promise.resolve(jsonResponse(QUOTE_RESPONSE));
-    });
+  it("renders quote and analysis data from the API, with a mock source label", async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => routeFetch(url));
 
     render(<MarketExplorer />);
 
     await waitFor(() => expect(screen.getByText("191.00000000")).toBeInTheDocument());
     expect(screen.getByText(/SOURCE: MOCK/)).toBeInTheDocument();
     expect(screen.queryByTestId("market-explorer-loading")).not.toBeInTheDocument();
+    // The technical-analysis panel renders from the same real API.
+    await waitFor(() => expect(screen.getByText("BULLISH")).toBeInTheDocument());
   });
 
-  it("shows an error state when the API call fails", async () => {
+  it("shows an error state when the quote/series API call fails", async () => {
     (fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
       if (url.includes("/assets")) return Promise.resolve(jsonResponse(ASSETS_RESPONSE));
       return Promise.resolve(

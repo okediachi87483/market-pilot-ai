@@ -37,9 +37,18 @@ app/
 ├── models/       SQLAlchemy models — Asset, MarketData (Phase 3)
 ├── schemas/      Pydantic request/response schemas
 ├── services/
-│   └── market_data/   provider (protocol + mock), validator, normalizer, service (Phase 3)
+│   ├── market_data/         provider (protocol + mock), validator, normalizer, service (Phase 3)
+│   └── technical_analysis/  indicators, engine, features, regime, service (Phase 4)
 └── main.py       app factory, composition root
 alembic/          migrations — see docs/market-data.md §4
 ```
 
-See [docs/architecture.md](../../docs/architecture.md), [docs/api.md](../../docs/api.md), and [docs/market-data.md](../../docs/market-data.md) for the full design this implements.
+See [docs/architecture.md](../../docs/architecture.md), [docs/api.md](../../docs/api.md), [docs/market-data.md](../../docs/market-data.md), and [docs/technical-analysis.md](../../docs/technical-analysis.md) for the full design this implements.
+
+### A note on `mypy` on Windows
+
+If `mypy` fails with `ImportError: DLL load failed ... An Application Control policy has blocked this file`, that's a local Windows security policy blocking mypy's compiled (`mypyc`) binary — not a project issue. Fix locally with a source (pure-Python) reinstall:
+
+```bash
+pip install --force-reinstall --no-cache-dir --no-binary mypy mypy==1.13.0
+```

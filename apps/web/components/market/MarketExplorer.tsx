@@ -5,28 +5,25 @@ import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError } from "@/lib/api";
-import {
-  type Asset,
-  type HistoryResponse,
-  type QuoteResponse,
-  getAssets,
-  getHistory,
-  getQuote,
-} from "@/lib/marketData";
+import { type IndicatorSeriesResponse, getIndicatorSeries } from "@/lib/analysis";
+import { type Asset, type QuoteResponse, getAssets, getQuote } from "@/lib/marketData";
+import { AnalysisPanel } from "./AnalysisPanel";
 import { PriceChart } from "./PriceChart";
 
 const FALLBACK_SYMBOLS = ["AAPL", "MSFT", "NVDA", "AMZN", "TSLA"];
 
 /**
- * Market overview experience (Step 14): symbol selector, current
- * price/OHLC/volume/last-updated/source, and a history chart — all from
- * the real API (docs/market-data.md), never fabricated in the frontend.
+ * Market overview experience (Step 11/13/14): symbol selector, current
+ * price/OHLC/volume/last-updated/source, a chart with EMA/SMA/Bollinger
+ * overlays, and the technical-analysis panel — all from the real API
+ * (docs/market-data.md, docs/technical-analysis.md), never fabricated in
+ * the frontend.
  */
 export function MarketExplorer() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [symbol, setSymbol] = useState<string>("AAPL");
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
-  const [history, setHistory] = useState<HistoryResponse | null>(null);
+  const [series, setSeries] = useState<IndicatorSeriesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -36,7 +33,7 @@ export function MarketExplorer() {
       .then(setAssets)
       .catch(() => {
         // The symbol selector falls back to a fixed list; the main
-        // quote/history panel below surfaces its own error state.
+        // quote/chart panel below surfaces its own error state.
       });
   }, []);
 
@@ -45,11 +42,11 @@ export function MarketExplorer() {
     setLoading(true);
     setError(null);
 
-    Promise.all([getQuote(symbol), getHistory(symbol, { interval: "1h" })])
-      .then(([quoteResult, historyResult]) => {
+    Promise.all([getQuote(symbol), getIndicatorSeries(symbol, { interval: "1h" })])
+      .then(([quoteResult, seriesResult]) => {
         if (cancelled) return;
         setQuote(quoteResult);
-        setHistory(historyResult);
+        setSeries(seriesResult);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -115,11 +112,13 @@ export function MarketExplorer() {
         </Card>
       )}
 
-      {!loading && !error && history && (
-        <Card eyebrow={`Price History — ${history.interval}`} mock>
-          <PriceChart bars={history.bars} />
+      {!loading && !error && series && (
+        <Card eyebrow={`Price History — ${series.interval}`} mock>
+          <PriceChart points={series.points} />
         </Card>
       )}
+
+      {!loading && !error && <AnalysisPanel symbol={symbol} interval="1h" />}
     </div>
   );
 }

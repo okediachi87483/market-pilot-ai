@@ -15,7 +15,7 @@ Market Data -> Normalization -> Technical Analysis -> Signal Engine
    -> AI Analysis -> Risk Engine -> Paper Trading -> Portfolio -> Alerting -> Dashboard
 ```
 
-Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/market-data.md](docs/market-data.md), [docs/ai-architecture.md](docs/ai-architecture.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
+Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/market-data.md](docs/market-data.md), [docs/technical-analysis.md](docs/technical-analysis.md), [docs/ai-architecture.md](docs/ai-architecture.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
 
 ## Technology stack
 
@@ -114,15 +114,14 @@ docker-compose.yml
 Makefile
 ```
 
-`packages/` (the domain packages — `technical_analysis`, `signal_engine`, `ai_engine`, `risk_engine`, `paper_trading`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data (Phase 3's owning domain) lives inside `apps/api/app/services/market_data/` rather than a standalone `packages/market_data/` — a pragmatic simplification (see docs/architecture.md's "do not over-engineer" principle) now recorded as a deviation in the Phase 3 completion report; extracting it to `packages/` remains available once a second consumer (e.g. the signal engine) needs it.
+`packages/` (the domain packages — `signal_engine`, `ai_engine`, `risk_engine`, `paper_trading`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data and technical analysis (Phase 3/4's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in the Phase 3/4 completion reports.
 
 ## Current phase
 
-**Phase 3 — Market Data Ingestion & Normalization.** A real ingestion pipeline: provider abstraction (`MarketDataProvider` protocol) with a deterministic mock implementation, OHLCV validation and normalization, idempotent PostgreSQL persistence (Alembic-migrated), and the first real API endpoints (`/api/v1/assets`, `/api/v1/market/{symbol}`, `/api/v1/market/{symbol}/history`) — all consumed by a real `/markets` page and a live-data watchlist panel. Full detail: [docs/market-data.md](docs/market-data.md).
+**Phase 4 — Technical Analysis Engine.** Deterministic indicators (SMA/EMA/RSI/MACD/Stochastic/ATR/Bollinger/Volume), market features, and a rule-based market regime classifier — all computed on demand from Phase 3's persisted market data, with no AI and no trading-decision logic anywhere in this layer. New endpoints: `GET /api/v1/analysis/{symbol}`, `/analysis/{symbol}/indicators`, `/analysis/{symbol}/regime`. The `/markets` page now shows a full technical-analysis panel and an EMA/SMA/Bollinger/volume chart, and the dashboard's signature visualization is now real — a "Market State" gauge driven by detected regime data, not a mock "AI" placeholder. Full detail: [docs/technical-analysis.md](docs/technical-analysis.md).
 
 ## Upcoming phases
 
-4. Technical indicators
 5. Deterministic signal engine
 6. Deterministic risk engine
 7. Paper trading (simulated brokerage)

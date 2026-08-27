@@ -29,12 +29,14 @@ app/            routes (App Router) — one folder per screen in docs/ui-screen-
 components/
 ├── shell/      AppShell, Sidebar, TopBar — the persistent chrome
 ├── ui/         design-system primitives (Card, StatusTag, Skeleton, EmptyState, ErrorState)
-└── market/     MarketExplorer, PriceChart, WatchlistPreview — real API data (Phase 3);
-                remaining panels (AI/portfolio/risk/signals/alerts) are still mock placeholders
-lib/            nav definitions, API fetch wrapper (api.ts), market data client (marketData.ts)
+└── market/     MarketExplorer, PriceChart, AnalysisPanel, MarketStateVisualization,
+                WatchlistPreview — real API data (Phase 3/4); portfolio/risk/signals/alerts
+                remain mock placeholders until their owning phases land
+lib/            nav definitions, API fetch wrapper (api.ts), market data client
+                (marketData.ts), technical-analysis client (analysis.ts)
 styles/         design tokens (docs/ui-design-system.md)
 ```
 
-`/markets` and the dashboard's watchlist panel are wired to the real backend (`GET /api/v1/assets`, `/market/{symbol}`, `/market/{symbol}/history`) — the data itself is still mock market data end to end (docs/market-data.md), always labeled `SOURCE: MOCK`.
+`/markets` and the dashboard are wired to the real backend: `GET /api/v1/assets`, `/market/{symbol}`, `/analysis/{symbol}`, `/analysis/{symbol}/indicators` — the underlying market data itself is still mock end to end (docs/market-data.md, docs/technical-analysis.md), always labeled `SOURCE: MOCK`. The dashboard's signature gauge is now a real "Market State" visualization driven by the detected regime — see docs/technical-analysis.md §13 for why it's no longer labeled "AI" (there is no AI in this system yet).
 
 Design reference: [docs/ui-design-system.md](../../docs/ui-design-system.md) and the [Command Center canvas](../../docs/design/command-center/).
