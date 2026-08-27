@@ -76,12 +76,14 @@ Twelve routes. Desktop is the primary experience (see [ui-design-system.md](ui-d
 
 ## `/risk`
 
-- **Primary user goal**: understand current risk exposure and configure the deterministic rules that govern it.
-- **Important information**: live exposure/daily-loss/drawdown/concurrent-position bars vs. configured limits ([api.md](api.md) `GET /risk`); the editable rule values themselves ([api.md](api.md) `GET/PUT /risk/rules`).
-- **Primary actions**: edit and save risk rules.
-- **Secondary actions**: view which currently-open positions contribute most to exposure.
-- **Desktop layout**: live exposure summary at top (read-only, `RiskPanel`), editable rule form below with explicit units (%, minutes, count) and inline validation matching [api.md](api.md)'s server-side bounds.
-- **Mobile behavior**: same two sections stacked; the rule-editing form uses full-width steppers/inputs rather than a dense multi-column form.
+> **Phase 6 status**: implemented as the "Risk Center" (`RiskCenter.tsx`) — live exposure/drawdown/daily-P&L/concurrent-position panel, the active policy's limits, and a recent-decisions feed, all real (docs/risk-engine.md §12). The editable rule form below is **not built yet**: `PUT /risk/rules` exists and is fully validated server-side, but this phase scoped the UI to *showing* the policy, not editing it in-browser — editing is API-only for now. Also added beyond this sketch: a "Recent Decisions" feed (approve/reject history with reasons), since Step 21 of the Phase 6 plan asked for it explicitly.
+
+- **Primary user goal**: understand current risk exposure and the deterministic rules that govern it.
+- **Important information**: live exposure/daily-loss/drawdown/concurrent-position bars vs. configured limits ([api.md](api.md) `GET /risk`); the configured rule values themselves ([api.md](api.md) `GET/PUT /risk/rules`); recent approve/reject decisions.
+- **Primary actions**: none yet in-browser (rules are read-only in this phase's UI) — see status note above.
+- **Secondary actions**: view which currently-open positions contribute most to exposure (blocked on Phase 7's position tracking).
+- **Desktop layout**: live exposure summary + policy limits side by side, recent decisions list below.
+- **Mobile behavior**: same sections stacked.
 
 ## `/alerts`
 

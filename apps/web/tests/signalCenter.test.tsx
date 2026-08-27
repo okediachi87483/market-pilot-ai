@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SignalCenter } from "@/components/market/SignalCenter";
 
@@ -79,5 +79,83 @@ describe("SignalCenter", () => {
     render(<SignalCenter />);
 
     await waitFor(() => expect(screen.getByText(/unknown asset symbol/)).toBeInTheDocument());
+  });
+
+  it("offers Run Risk Review for a CANDIDATE signal and shows the approved result", async () => {
+    const evaluationResponse = {
+      id: "re1",
+      signal_id: "s1",
+      symbol: "AAPL",
+      policy_id: "p1",
+      policy_version: 1,
+      decision: "APPROVED",
+      reasons: [],
+      checks: [],
+      calculated_position_size: "50.0000000000",
+      entry_price: "100.00000000",
+      stop_loss_price: "98.00000000",
+      take_profit_price: "104.00000000",
+      position_value: "5000.00000000",
+      portfolio_snapshot: {},
+      evaluated_at: "2024-06-01T00:00:00Z",
+      created_at: "2024-06-01T00:00:00Z",
+    };
+
+    (fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/assets")) return Promise.resolve(jsonResponse(ASSETS_RESPONSE));
+      if (url.includes("/risk/evaluate/") && init?.method === "POST") {
+        return Promise.resolve(jsonResponse(evaluationResponse));
+      }
+      return Promise.resolve(jsonResponse(SIGNAL_RESPONSE));
+    });
+
+    render(<SignalCenter />);
+    await waitFor(() => expect(screen.getByText("BUY")).toBeInTheDocument());
+
+    const button = screen.getByRole("button", { name: /run risk review/i });
+    fireEvent.click(button);
+
+    await waitFor(() =>
+      expect(screen.getByText("Risk Approved · Paper Trade Eligible")).toBeInTheDocument(),
+    );
+    expect(screen.getByText("98.00000000")).toBeInTheDocument(); // stop-loss
+    // Never presented as an executed trade.
+    expect(screen.queryByText(/trade executed/i)).not.toBeInTheDocument();
+  });
+
+  it("fetches and shows an existing risk decision for an already-evaluated signal", async () => {
+    const alreadyApproved = { ...SIGNAL_RESPONSE, status: "RISK_APPROVED" };
+    const evaluationResponse = {
+      id: "re2",
+      signal_id: "s1",
+      symbol: "AAPL",
+      policy_id: "p1",
+      policy_version: 1,
+      decision: "APPROVED",
+      reasons: [],
+      checks: [],
+      calculated_position_size: "10",
+      entry_price: "150.00",
+      stop_loss_price: "147.00",
+      take_profit_price: "156.00",
+      position_value: "1500",
+      portfolio_snapshot: {},
+      evaluated_at: "2024-06-01T00:00:00Z",
+      created_at: "2024-06-01T00:00:00Z",
+    };
+
+    (fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+      if (url.includes("/assets")) return Promise.resolve(jsonResponse(ASSETS_RESPONSE));
+      if (url.includes("/risk/evaluations")) return Promise.resolve(jsonResponse([evaluationResponse]));
+      return Promise.resolve(jsonResponse(alreadyApproved));
+    });
+
+    render(<SignalCenter />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Risk Approved · Paper Trade Eligible")).toBeInTheDocument(),
+    );
+    // No "Run Risk Review" button once a decision already exists.
+    expect(screen.queryByRole("button", { name: /run risk review/i })).not.toBeInTheDocument();
   });
 });

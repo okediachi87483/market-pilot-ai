@@ -2,17 +2,21 @@
 
 Profit Protection is a monitoring system, not a withdrawal system. It watches portfolio thresholds and generates alerts. **It never moves money, closes a position, or takes any action on its own** — the user remains responsible for every real decision. This is a hard product boundary, not just an MVP limitation: see [ADR-007](decisions/ADR-007-paper-trading-first.md).
 
+> **Status**: the `alerts` package this document describes is not built yet (later phase — see [architecture.md](architecture.md) §"Upcoming phases"). The *risk controls* it references, however, are real as of Phase 6 — see [risk-engine.md](risk-engine.md). This document is the design sketch for how a future `alerts` package will *observe* those same numbers without gating anything, once it exists.
+
 ## 1. Monitored thresholds
 
-Configured per-portfolio (extends `risk_rules` conceptually but is evaluated by the `alerts` package, not `risk_engine` — profit protection *observes* the portfolio, it does not gate orders):
+Configured per-portfolio (extends the Risk Engine's policy conceptually but would be evaluated by a future `alerts` package, not `RiskService` — profit protection *observes* the portfolio, it does not gate orders):
 
 | Threshold | Source | Evaluated against |
 |---|---|---|
 | Daily profit target | user-configured % or absolute amount | Portfolio's daily realized + unrealized P/L |
 | Overall profit target | user-configured % or absolute amount | Portfolio's total return since inception |
-| Maximum drawdown | `risk_rules.max_drawdown_pct` (shared with the risk engine — one number, two consumers) | Current value vs. high-water mark |
-| Portfolio exposure | `risk_rules.max_portfolio_exposure_pct` | Sum of open position value / portfolio value |
+| Maximum drawdown | `risk_policies.max_drawdown_pct` (shared with the Risk Engine — one number, two consumers; see [risk-engine.md](risk-engine.md) §2/§5) | Current value vs. high-water mark |
+| Portfolio exposure | `risk_policies.max_portfolio_exposure_pct` | Sum of open position value / portfolio value |
 | Position concentration | user-configured % (default: same as `max_position_size_pct`) | Any single position's value / portfolio value |
+
+The Risk Engine already computes drawdown and exposure on every risk evaluation (`GET /risk` exposes them live, backing the Risk Center's "Portfolio Risk" panel) — a future `alerts` package reads the same `risk_policies` row and the same portfolio snapshot, it doesn't recompute a separate copy of these numbers.
 
 ## 2. Alert types
 

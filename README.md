@@ -114,15 +114,14 @@ docker-compose.yml
 Makefile
 ```
 
-`packages/` (the domain packages — `ai_engine`, `risk_engine`, `paper_trading`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data, technical analysis, and the signal engine (Phase 3/4/5's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis,signal_engine}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in each phase's completion report.
+`packages/` (the domain packages — `ai_engine`, `paper_trading`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data, technical analysis, the signal engine, and the risk engine (Phase 3/4/5/6's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis,signal_engine,risk_engine}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in each phase's completion report.
 
 ## Current phase
 
-**Phase 5 — Deterministic Signal Engine.** A transparent, versioned strategy (`trend_momentum_v1`) that turns Phase 4's regime/features into BUY/SELL/HOLD trade *candidates* — fully rule-based, no AI, no execution, no broker access. Every candidate carries its full reasoning (why it fired, what would invalidate it) and a documented, non-probabilistic strength score (WEAK/MODERATE/STRONG). New endpoints: `GET /api/v1/signals`, `/signals/{id}`, `POST /signals/evaluate/{symbol}`. The `/signals` route is now a real Signal Center; the dashboard's signal panel shows real evaluated signals instead of a fabricated confidence percentage. Full detail: [docs/signal-engine.md](docs/signal-engine.md).
+**Phase 6 — Deterministic Risk Engine.** The hard safety boundary between the Signal Engine and (Phase 7's) paper trading: every `CANDIDATE` signal is checked against an 11-step, fully-explained pipeline (daily loss, drawdown, exposure, position-size, concurrent positions, stop-loss/take-profit validity, loss cooldown) and either `RISK_APPROVED` — with an engine-computed position size, stop-loss, and take-profit — or `RISK_REJECTED` with every failing reason named. Fully rule-based, no AI, no execution, no broker access. New endpoints: `GET /api/v1/risk`, `/risk/rules` (`GET`/`PUT`), `POST /risk/evaluate/{signal_id}`, `/risk/evaluations` (`GET`, `/{id}`). The `/risk` route is now a real Risk Center; the Signal Center shows a signal's live progress through risk review; the dashboard's risk panel shows real exposure/drawdown instead of hardcoded mock bars. Full detail: [docs/risk-engine.md](docs/risk-engine.md).
 
 ## Upcoming phases
 
-6. Deterministic risk engine
 7. Paper trading (simulated brokerage)
 8. AI analyst (Claude-based, schema-validated, risk-gated)
 9. MarketPilot Command Center — full data-wired UI

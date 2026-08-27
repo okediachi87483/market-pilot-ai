@@ -5,6 +5,7 @@ hand.
 """
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
@@ -32,10 +33,16 @@ def register_error_handlers(app: FastAPI) -> None:
     async def handle_validation_error(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        # exc.errors() can carry non-JSON-native values in "input" (e.g. a
+        # parsed Decimal/datetime for a field that failed a range check
+        # after parsing) — jsonable_encoder converts those the same way
+        # FastAPI's own default response encoding would.
         return JSONResponse(
             status_code=422,
             content=_envelope(
-                "validation_error", "invalid request parameters", {"errors": exc.errors()}
+                "validation_error",
+                "invalid request parameters",
+                {"errors": jsonable_encoder(exc.errors())},
             ),
         )
 

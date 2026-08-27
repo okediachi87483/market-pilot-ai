@@ -1,7 +1,5 @@
-import { ScreenPlaceholder } from "@/components/ui/ScreenPlaceholder";
+import { RiskCenter } from "@/components/market/RiskCenter";
 
 export default function RiskPage() {
-  return (
-    <ScreenPlaceholder description="Live exposure vs. configured limits, and the deterministic rule editor. Arrives with the risk-engine package." />
-  );
+  return <RiskCenter />;
 }

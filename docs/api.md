@@ -84,13 +84,18 @@ FastAPI, Pydantic v2 schemas for every request/response, OpenAPI docs auto-gener
 | **GET /trades** | Trade history. Query: `asset_id`, `from`, `to`, pagination. Auth: owner only. |
 | **POST /trades** | Submit a paper order (user-initiated). Body: `{asset_id, side, quantity, order_type, limit_price?}`. Requires `Idempotency-Key` header. Flow: validated → passed to the risk engine → `201` with the resulting `Order` (status `filled` or `rejected`, with `risk_decision_reason` always populated) — see [risk-engine.md](risk-engine.md). A rejection is a normal `201`, not an error status: the request was valid and was correctly evaluated, it just wasn't approved. `422` only for malformed input (e.g. non-positive quantity). Auth: owner only. |
 
-### Risk
+### Risk — implemented in Phase 6, see [risk-engine.md](risk-engine.md) §11
+
+> Deviations from the Phase 1 sketch: (1) the config resource is `RiskPolicy`, not `RiskRules` — versioned and immutable per-row rather than a single mutable row per portfolio, so `PUT /risk/rules` inserts a new version instead of updating in place (risk-engine.md §2). (2) A successful `PUT /risk/rules` does not write a dedicated `AuditLog` entry — the `audit`/`audit_logs` table sketched in Phase 1 isn't built yet (no phase has needed it before now); the policy's own version history *is* the audit trail for configuration changes, and every risk decision's full reasoning is separately preserved in `risk_evaluations` (risk-engine.md §10). (3) Three endpoints added beyond the sketch — `POST /risk/evaluate/{signal_id}`, `GET /risk/evaluations`, `GET /risk/evaluations/{id}` — since evaluating a signal and reading back its audit trail are the actual core of what this phase does.
 
 | | |
 |---|---|
-| **GET /risk** | Current live exposure vs. configured limits (portfolio-computed: exposure %, daily loss used, drawdown, concurrent position count) — the read model behind the dashboard's Risk panel. Distinct from the endpoint below, which is configuration. Auth: owner only. |
-| **GET /risk/rules** | Configured `RiskRules` for the user's portfolio. Auth: owner only. |
-| **PUT /risk/rules** | Replace the configured rules. Body: full `RiskRules` payload; all fields required (no partial update, to avoid an ambiguous merge of safety-critical values). Server-side bounds-checked (e.g. `max_portfolio_exposure_pct` must be `(0, 100]`) — `422` on out-of-bounds values. Every successful update writes an `AuditLog` entry. Auth: owner only. |
+| **GET /risk** | Current portfolio state (equity, exposure, drawdown, daily P/L, concurrent positions) alongside the active policy's limits — the read model behind the Risk Center's "Portfolio Risk" panel. Distinct from the endpoint below, which is configuration. |
+| **GET /risk/rules** | The active `RiskPolicy`. |
+| **PUT /risk/rules** | Creates and activates a new policy version. Body: all ten fields required (no partial update, to avoid an ambiguous merge of safety-critical values). Server-side bounds-checked (e.g. `max_portfolio_exposure_pct` must be `(0, 100]`, `stop_loss_pct` must be `(0, 100)`) — `422` on out-of-bounds or missing values. |
+| **POST /risk/evaluate/{signal_id}** | Runs the risk-check pipeline once for a `CANDIDATE` signal, sizing a position and computing stop-loss/take-profit, and transitions the signal to `RISK_APPROVED`/`RISK_REJECTED`. `404` unknown signal; `409` if the signal isn't currently `CANDIDATE` (no re-evaluation in this phase). Never places, fills, or simulates a trade — Phase 7 consumes `RISK_APPROVED` signals. |
+| **GET /risk/evaluations** | List risk evaluations. Query: `signal_id`, `decision`, `symbol` (all optional filters), `limit`. |
+| **GET /risk/evaluations/{id}** | Single evaluation by UUID, with the full check trail and reasons. `404` if unknown. |
 
 ### Alerts
 

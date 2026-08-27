@@ -34,17 +34,19 @@ app/
 ├── api/          HTTP routers — health checks (unversioned) + /api/v1 namespace
 ├── core/         settings, logging, error types — the only place environment variables are read
 ├── db/           Postgres + Redis connection management
-├── models/       SQLAlchemy models — Asset, MarketData (Phase 3), Signal (Phase 5)
+├── models/       SQLAlchemy models — Asset, MarketData (Phase 3), Signal (Phase 5),
+│                 RiskPolicy, RiskEvaluation (Phase 6)
 ├── schemas/      Pydantic request/response schemas
 ├── services/
 │   ├── market_data/         provider (protocol + mock), validator, normalizer, service (Phase 3)
 │   ├── technical_analysis/  indicators, engine, features, regime, service (Phase 4)
-│   └── signal_engine/       rules, scoring, engine, risk_boundary, service (Phase 5)
+│   ├── signal_engine/       rules, scoring, engine, risk_boundary, service (Phase 5)
+│   └── risk_engine/         defaults, sizing, checks, engine, portfolio_state, service (Phase 6)
 └── main.py       app factory, composition root
 alembic/          migrations — see docs/market-data.md §4
 ```
 
-See [docs/architecture.md](../../docs/architecture.md), [docs/api.md](../../docs/api.md), [docs/market-data.md](../../docs/market-data.md), [docs/technical-analysis.md](../../docs/technical-analysis.md), and [docs/signal-engine.md](../../docs/signal-engine.md) for the full design this implements.
+See [docs/architecture.md](../../docs/architecture.md), [docs/api.md](../../docs/api.md), [docs/market-data.md](../../docs/market-data.md), [docs/technical-analysis.md](../../docs/technical-analysis.md), [docs/signal-engine.md](../../docs/signal-engine.md), and [docs/risk-engine.md](../../docs/risk-engine.md) for the full design this implements.
 
 ### A note on `mypy` on Windows
 

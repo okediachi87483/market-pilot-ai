@@ -5,6 +5,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError } from "@/lib/api";
 import { type Asset, getAssets } from "@/lib/marketData";
+import { type RiskEvaluation, evaluateRisk, listRiskEvaluations } from "@/lib/risk";
 import { type EvaluateSignalResponse, evaluateSignal } from "@/lib/signals";
 import { SignalCard } from "./SignalCard";
 
@@ -25,6 +26,9 @@ export function SignalCenter() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const [riskEvaluation, setRiskEvaluation] = useState<RiskEvaluation | null>(null);
+  const [riskReviewLoading, setRiskReviewLoading] = useState(false);
+  const [riskReviewError, setRiskReviewError] = useState<string | null>(null);
 
   useEffect(() => {
     getAssets()
@@ -39,10 +43,23 @@ export function SignalCenter() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setRiskEvaluation(null);
+    setRiskReviewError(null);
 
     evaluateSignal(symbol, "1h")
       .then((result) => {
-        if (!cancelled) setSignal(result);
+        if (cancelled) return;
+        setSignal(result);
+        // A dedup'd CANDIDATE (Phase 5's cooldown) can already carry a
+        // RISK_APPROVED/RISK_REJECTED status from an earlier review —
+        // fetch that decision so the card doesn't offer a stale "Run
+        // Risk Review" button for a signal already past that stage.
+        if (result.status === "RISK_APPROVED" || result.status === "RISK_REJECTED") {
+          return listRiskEvaluations({ signalId: result.id, limit: 1 }).then((rows) => {
+            const [latest] = rows;
+            if (!cancelled && latest) setRiskEvaluation(latest);
+          });
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -57,6 +74,18 @@ export function SignalCenter() {
       cancelled = true;
     };
   }, [symbol, reloadToken]);
+
+  function handleRunRiskReview() {
+    if (!signal) return;
+    setRiskReviewLoading(true);
+    setRiskReviewError(null);
+    evaluateRisk(signal.id)
+      .then(setRiskEvaluation)
+      .catch((err: unknown) => {
+        setRiskReviewError(err instanceof ApiError ? err.message : "Risk review failed.");
+      })
+      .finally(() => setRiskReviewLoading(false));
+  }
 
   const symbolOptions = assets.length > 0 ? assets.map((asset) => asset.symbol) : FALLBACK_SYMBOLS;
 
@@ -94,7 +123,15 @@ export function SignalCenter() {
         </div>
       )}
 
-      {!loading && !error && signal && <SignalCard signal={signal} />}
+      {!loading && !error && signal && (
+        <SignalCard
+          signal={signal}
+          riskEvaluation={riskEvaluation}
+          onRunRiskReview={handleRunRiskReview}
+          riskReviewLoading={riskReviewLoading}
+          riskReviewError={riskReviewError}
+        />
+      )}
     </div>
   );
 }

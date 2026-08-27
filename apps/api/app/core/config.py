@@ -5,6 +5,7 @@ module receives configuration through `get_settings()`, never by reading
 the environment directly. See docs/security.md §2.
 """
 
+from decimal import Decimal
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -36,6 +37,14 @@ class Settings(BaseSettings):
     ai_provider: str = "anthropic"
     ai_model: str = "claude-sonnet-5"
     ai_provider_api_key: str | None = None
+
+    # Phase 6: there is no paper-trading portfolio yet (Phase 7), so the
+    # Risk Engine evaluates every candidate against a clean, fully-funded,
+    # position-free simulated starting equity rather than a hardcoded
+    # constant buried in business logic — see docs/risk-engine.md
+    # §"Portfolio state (the Phase 7 seam)". Phase 7 replaces the provider
+    # that reads this value with one computed from real positions/trades.
+    risk_starting_equity: Decimal = Decimal("100000")
 
     @property
     def cors_origin_list(self) -> list[str]:

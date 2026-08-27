@@ -33,3 +33,8 @@ class ValidationAppError(AppError):
 class ProviderError(AppError):
     status_code = 503
     code = "provider_error"
+
+
+class ConflictError(AppError):
+    status_code = 409
+    code = "conflict"

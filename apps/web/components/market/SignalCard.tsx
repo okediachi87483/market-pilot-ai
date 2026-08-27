@@ -1,4 +1,5 @@
 import { StatusTag, type MarketState } from "@/components/ui/StatusTag";
+import type { RiskEvaluation } from "@/lib/risk";
 import type { SignalResponse, SignalStrength, SignalType } from "@/lib/signals";
 
 const SIGNAL_COLOR: Record<SignalType, string> = {
@@ -13,15 +14,87 @@ const STRENGTH_COLOR: Record<SignalStrength, string> = {
   WEAK: "var(--color-text-tertiary)",
 };
 
+const DECISION_COLOR: Record<RiskEvaluation["decision"], string> = {
+  APPROVED: "var(--color-positive)",
+  REJECTED: "var(--color-negative)",
+};
+
+type LifecycleStage = "CANDIDATE" | "RISK_REVIEW" | "RISK_APPROVED" | "RISK_REJECTED";
+
+function currentStage(signal: SignalResponse, riskEvaluation: RiskEvaluation | null): LifecycleStage {
+  if (riskEvaluation) return riskEvaluation.decision === "APPROVED" ? "RISK_APPROVED" : "RISK_REJECTED";
+  if (signal.status === "RISK_APPROVED" || signal.status === "RISK_REJECTED") {
+    return signal.status;
+  }
+  return "CANDIDATE";
+}
+
 /**
- * The professional Signal Center card (Step 13) — precise and discplined,
- * never celebratory. No color-flashing, no emoji, no "you're about to
- * win" framing: STRONG uses the same restrained teal accent as any other
- * emphasized value elsewhere in the design system, not gold or flashing
- * green. This is a deterministic strategy's *suggestion*, presented with
- * its full reasoning — not a bet.
+ * The risk lifecycle stepper (Step 22): CANDIDATE -> RISK REVIEW ->
+ * RISK APPROVED/RISK REJECTED. Plain text + muted color, not a flashy
+ * progress animation — this documents where a candidate is in a
+ * deterministic pipeline, not a countdown to a payout.
  */
-export function SignalCard({ signal }: { signal: SignalResponse }) {
+function LifecycleStepper({ stage }: { stage: LifecycleStage }) {
+  const steps: { key: LifecycleStage; label: string }[] = [
+    { key: "CANDIDATE", label: "Candidate" },
+    { key: "RISK_REVIEW", label: "Risk Review" },
+    {
+      key: stage === "RISK_REJECTED" ? "RISK_REJECTED" : "RISK_APPROVED",
+      label: stage === "RISK_REJECTED" ? "Risk Rejected" : "Risk Approved",
+    },
+  ];
+  const activeIndex = steps.findIndex((step) => step.key === stage);
+
+  return (
+    <div className="flex items-center gap-2 text-[11px]" data-testid="lifecycle-stepper">
+      {steps.map((step, index) => {
+        const isActive = index === activeIndex;
+        const isPast = index < activeIndex;
+        const isRejected = step.key === "RISK_REJECTED";
+        const color = isActive || isPast
+          ? isRejected
+            ? "var(--color-negative)"
+            : "var(--color-accent-teal)"
+          : "var(--color-text-tertiary)";
+        return (
+          <div key={step.key} className="flex items-center gap-2">
+            <span className="font-semibold uppercase tracking-wider" style={{ color }}>
+              {step.label}
+            </span>
+            {index < steps.length - 1 && <span className="text-text-tertiary">&rarr;</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The professional Signal Center card (Step 13/22) — precise and
+ * disciplined, never celebratory. No color-flashing, no emoji, no
+ * "you're about to win" framing: STRONG uses the same restrained teal
+ * accent as any other emphasized value elsewhere in the design system,
+ * not gold or flashing green. This is a deterministic strategy's
+ * *suggestion*, presented with its full reasoning — not a bet, and an
+ * approved candidate is never shown as an executed trade (Step 22/23).
+ */
+export function SignalCard({
+  signal,
+  riskEvaluation = null,
+  onRunRiskReview,
+  riskReviewLoading = false,
+  riskReviewError = null,
+}: {
+  signal: SignalResponse;
+  riskEvaluation?: RiskEvaluation | null;
+  onRunRiskReview?: () => void;
+  riskReviewLoading?: boolean;
+  riskReviewError?: string | null;
+}) {
+  const stage = currentStage(signal, riskEvaluation);
+  const canRunRiskReview = signal.status === "CANDIDATE" && !riskEvaluation && onRunRiskReview;
+
   return (
     <section className="flex flex-col gap-4 rounded-md border border-border-subtle bg-bg-1 p-5">
       <div className="flex items-start justify-between">
@@ -86,10 +159,85 @@ export function SignalCard({ signal }: { signal: SignalResponse }) {
         </div>
       )}
 
-      <div className="flex items-center justify-between border-t border-border-subtle pt-3">
-        <span className="text-[11px] uppercase tracking-wider text-text-tertiary">Status</span>
-        <span className="font-mono text-xs text-text-primary">{signal.status}</span>
+      <div className="flex flex-col gap-3 border-t border-border-subtle pt-3">
+        <LifecycleStepper stage={stage} />
+
+        {canRunRiskReview && (
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={onRunRiskReview}
+              disabled={riskReviewLoading}
+              className="self-start rounded-md border border-border-default bg-bg-2 px-3 py-1.5 text-xs font-semibold text-text-primary hover:bg-bg-3 disabled:opacity-50"
+            >
+              {riskReviewLoading ? "Running risk review…" : "Run Risk Review"}
+            </button>
+            {riskReviewError && <p className="text-xs text-negative">{riskReviewError}</p>}
+          </div>
+        )}
+
+        {riskEvaluation && riskEvaluation.decision === "APPROVED" && (
+          <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-2 p-3">
+            <div
+              className="text-xs font-bold uppercase tracking-wide"
+              style={{ color: DECISION_COLOR.APPROVED }}
+            >
+              Risk Approved &middot; Paper Trade Eligible
+            </div>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+              <RiskFact label="Position size" value={riskEvaluation.calculated_position_size} />
+              <RiskFact label="Entry" value={riskEvaluation.entry_price} />
+              <RiskFact label="Stop loss" value={riskEvaluation.stop_loss_price} />
+              <RiskFact label="Take profit" value={riskEvaluation.take_profit_price} />
+            </dl>
+            <div className="text-[10px] text-text-tertiary">
+              Policy v{riskEvaluation.policy_version} &middot; no paper trade has been placed —
+              paper trading arrives in a later phase.
+            </div>
+          </div>
+        )}
+
+        {riskEvaluation && riskEvaluation.decision === "REJECTED" && (
+          <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-2 p-3">
+            <div
+              className="text-xs font-bold uppercase tracking-wide"
+              style={{ color: DECISION_COLOR.REJECTED }}
+            >
+              Risk Rejected
+            </div>
+            <ul className="flex flex-col gap-1">
+              {riskEvaluation.reasons.map((reason) => (
+                <li key={reason} className="text-[11px] text-text-secondary">
+                  {reason}
+                </li>
+              ))}
+            </ul>
+            {riskEvaluation.checks.some((check) => !check.passed && !check.skipped) && (
+              <div className="mt-1 text-[10px] text-text-tertiary">
+                Failed checks:{" "}
+                {riskEvaluation.checks
+                  .filter((check) => !check.passed && !check.skipped)
+                  .map((check) => check.name)
+                  .join(", ")}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] uppercase tracking-wider text-text-tertiary">Status</span>
+          <span className="font-mono text-xs text-text-primary">{signal.status}</span>
+        </div>
       </div>
     </section>
+  );
+}
+
+function RiskFact({ label, value }: { label: string; value: string | null }) {
+  return (
+    <>
+      <dt className="text-text-tertiary">{label}</dt>
+      <dd className="text-right font-mono text-text-primary">{value ?? "—"}</dd>
+    </>
   );
 }
