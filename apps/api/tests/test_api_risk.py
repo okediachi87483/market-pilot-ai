@@ -134,6 +134,11 @@ async def test_evaluate_risk_approves_a_healthy_buy_signal(
     original = {k: client.get("/api/v1/risk/rules").json()[k] for k in _POLICY_FIELDS}
     neutralized = dict(original)
     neutralized["cooldown_after_loss_minutes"] = 0
+    # Phase 9.5: also neutralize drawdown/daily-loss — a long-lived local
+    # database accumulates a genuine drawdown across repeated suite runs
+    # (see test_risk_service.py's _neutralize_cooldown for the full note).
+    neutralized["max_drawdown_pct"] = "99"
+    neutralized["max_daily_loss_pct"] = "99"
     assert client.put("/api/v1/risk/rules", json=neutralized).status_code == 200
 
     try:

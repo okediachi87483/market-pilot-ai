@@ -111,26 +111,53 @@ class RiskService:
 
     async def evaluate_signal(self, signal_id: uuid.UUID) -> RiskEvaluation:
         started = time.monotonic()
-        signal = await self._get_signal(signal_id)
 
-        # Step 17: the one controlled transition this phase allows is
-        # CANDIDATE -> {RISK_APPROVED, RISK_REJECTED}. Re-evaluating a
-        # signal already past that point (including RISK_REJECTED ->
-        # RISK_APPROVED) is refused outright, not silently re-run — no
-        # re-evaluation mechanism is implemented in this phase.
-        if signal.status != "CANDIDATE":
+        # Provisional, *unlocked* fetch: fails fast on a non-CANDIDATE
+        # signal without bothering to fetch a quote, but MUST NOT be the
+        # check this method actually relies on for correctness — see
+        # below. `RiskEvaluation.signal_id` has no unique constraint
+        # (unlike `paper_orders.signal_id`), so nothing at the database
+        # level backstops "only one evaluation, ever" — the lock
+        # acquired further down is the only thing that does.
+        provisional_signal = await self._get_signal(signal_id)
+        if provisional_signal.status != "CANDIDATE":
             raise ConflictError(
-                f"signal {signal_id} is already {signal.status!r} — only a CANDIDATE signal "
-                "may be risk-evaluated (re-evaluation is not supported in this phase)",
-                details={"signal_id": str(signal_id), "status": signal.status},
+                f"signal {signal_id} is already {provisional_signal.status!r} — only a "
+                "CANDIDATE signal may be risk-evaluated (re-evaluation is not supported in "
+                "this phase)",
+                details={"signal_id": str(signal_id), "status": provisional_signal.status},
             )
 
         policy_row = await self.get_active_policy()
         policy_snapshot = self._to_policy_snapshot(policy_row)
         portfolio = await self.portfolio_state_provider.get_snapshot()
 
-        _asset, market_data_row = await self.market_data_service.get_quote(signal.asset.symbol)
+        # get_quote() eagerly persists (and *commits*) any freshly-ingested
+        # market data — a commit ends the current transaction and would
+        # release any row lock taken before this point. Deliberately
+        # called before the locked re-check below, not after, so the lock
+        # is acquired last and held continuously through to commit()
+        # (tests/test_risk_concurrency.py catches the ordering mistake).
+        _asset, market_data_row = await self.market_data_service.get_quote(
+            provisional_signal.asset.symbol
+        )
         entry_price = market_data_row.close
+
+        # Authoritative, locked re-check: two concurrent calls can both
+        # pass the provisional check above before either commits: without
+        # this lock, both proceed to evaluate, both INSERT a
+        # RiskEvaluation, and whichever COMMITs last silently overwrites
+        # the signal's status — two audit rows for one signal, not just a
+        # duplicate. The lock makes the second request block until the
+        # first's transaction ends, then re-read the *real* current
+        # status (no longer CANDIDATE) instead of a stale copy.
+        signal = await self._get_signal_for_update(signal_id)
+        if signal.status != "CANDIDATE":
+            raise ConflictError(
+                f"signal {signal_id} is already {signal.status!r} — only a CANDIDATE signal "
+                "may be risk-evaluated (re-evaluation is not supported in this phase)",
+                details={"signal_id": str(signal_id), "status": signal.status},
+            )
 
         request = to_risk_evaluation_request_from_signal(signal)
         now = datetime.now(UTC)
@@ -174,6 +201,34 @@ class RiskService:
 
     async def _get_signal(self, signal_id: uuid.UUID) -> Signal:
         result = await self.db.execute(select(Signal).where(Signal.id == signal_id))
+        signal = result.scalar_one_or_none()
+        if signal is None:
+            raise NotFoundError(f"unknown signal id: {signal_id}", details={"id": str(signal_id)})
+        return signal
+
+    async def _get_signal_for_update(self, signal_id: uuid.UUID) -> Signal:
+        # `of=Signal`: Signal.asset is `lazy="joined"` (a LEFT OUTER
+        # JOIN) — plain FOR UPDATE can't lock across the nullable side of
+        # an outer join, so the lock is scoped to just this table.
+        #
+        # `populate_existing()` is not optional here: `evaluate_signal`
+        # already loaded this same row (unlocked) into this session's
+        # identity map a few lines earlier (`provisional_signal`). By
+        # default SQLAlchemy does NOT overwrite an already-identity-mapped
+        # object's attributes from a later query's result — it silently
+        # returns the *same stale Python object* even though the SQL sent
+        # to Postgres genuinely blocked, locked, and re-fetched the
+        # current row. Without this, `signal.status` here would still
+        # read the pre-lock "CANDIDATE" value forever, and the
+        # `!= "CANDIDATE"` guard below would never fire — confirmed
+        # directly: tests/test_risk_concurrency.py failed with this
+        # exact symptom (two evaluations created) until this was added.
+        result = await self.db.execute(
+            select(Signal)
+            .where(Signal.id == signal_id)
+            .with_for_update(of=Signal)
+            .execution_options(populate_existing=True)
+        )
         signal = result.scalar_one_or_none()
         if signal is None:
             raise NotFoundError(f"unknown signal id: {signal_id}", details={"id": str(signal_id)})

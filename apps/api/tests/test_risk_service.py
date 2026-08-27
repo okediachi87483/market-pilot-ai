@@ -27,6 +27,7 @@ interfering with a test that isn't about cooldown at all.
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import select
@@ -47,10 +48,15 @@ def _service(db_session) -> RiskService:
 
 @asynccontextmanager
 async def _neutralize_cooldown(service: RiskService):
-    """Temporarily zeroes `cooldown_after_loss_minutes` so a real loss
-    realized elsewhere in the shared test session can't reject a signal
-    this test expects to be approved for unrelated reasons — see the
-    module docstring."""
+    """Temporarily neutralizes every *portfolio-history-dependent* check
+    (loss cooldown, drawdown, daily loss) so real trading state
+    accumulated by other tests in the shared database can't reject a
+    signal this test expects to be approved for unrelated reasons — see
+    the module docstring. Phase 9.5 widened this from cooldown-only:
+    repeated suite runs against a long-lived local database can
+    accumulate a genuine drawdown past the default 15% limit (fees on
+    many small round trips), which correctly — but irrelevantly for
+    these tests — rejected the healthy-signal cases on `max_drawdown`."""
     original = await service.get_active_policy()
     original_values = {
         "enabled": original.enabled,
@@ -66,6 +72,8 @@ async def _neutralize_cooldown(service: RiskService):
     }
     neutralized = dict(original_values)
     neutralized["cooldown_after_loss_minutes"] = 0
+    neutralized["max_drawdown_pct"] = Decimal("99")
+    neutralized["max_daily_loss_pct"] = Decimal("99")
     try:
         await service.update_policy(neutralized)
         yield

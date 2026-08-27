@@ -79,6 +79,16 @@ services:
     restart: on-failure
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-8000}
+      # Next.js standalone's server.js binds to $HOSTNAME if set, and
+      # Docker auto-injects HOSTNAME=<container id> for every container
+      # (visible via `docker exec ... echo $HOSTNAME`) — that resolves
+      # only to the container's own bridge-network IP, never to
+      # loopback, so the image's own HEALTHCHECK (which curls
+      # localhost:3000 from inside the container) fails permanently
+      # even though the app is genuinely up and externally reachable
+      # via the published port. Explicitly overriding HOSTNAME here
+      # makes the server bind every interface, including loopback.
+      HOSTNAME: "0.0.0.0"
     ports:
       - "127.0.0.1:${WEB_PORT:-3000}:3000"
     networks:

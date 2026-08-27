@@ -67,6 +67,26 @@ async def get_account(db: AsyncSession) -> PaperAccount:
     return account
 
 
+async def get_account_for_update(db: AsyncSession) -> PaperAccount:
+    """Same single-row read as `get_account`, but with `SELECT ... FOR
+    UPDATE` — for the two places that mutate `cash` (`execute_signal`,
+    `close_position`). `paper_accounts` is one shared row for every
+    trade; without a row lock, two concurrent trades can each read the
+    same starting `cash`, compute independent deltas, and have one
+    commit silently clobber the other's (a classic lost-update race —
+    caught directly by `tests/test_paper_concurrency.py`). A plain
+    Postgres row lock is the minimal, already-available fix — no
+    external lock service needed for a single-instance database. Never
+    call this from a read-only path (`compute_portfolio_state`, the
+    dashboard, `GET /paper/portfolio`) — it would serialize reads behind
+    writes for no reason."""
+    result = await db.execute(select(PaperAccount).limit(1).with_for_update())
+    account = result.scalar_one_or_none()
+    if account is None:
+        raise AppError("no paper trading account is configured")
+    return account
+
+
 async def compute_portfolio_state(
     db: AsyncSession, market_data_service: MarketDataService
 ) -> PortfolioState:

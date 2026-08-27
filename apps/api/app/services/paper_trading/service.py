@@ -17,6 +17,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, ConflictError, NotFoundError, ValidationAppError
@@ -87,8 +88,31 @@ class PaperTradingService:
                 details={"signal_id": str(signal_id), "quantity": str(quantity)},
             )
 
-        account = await portfolio_module.get_account(self.db)
+        # `fill()` must run BEFORE any lock is acquired: it goes through
+        # MarketDataService.get_quote(), which eagerly persists (and
+        # *commits*) any freshly-ingested market data. A commit ends the
+        # current transaction and releases every row lock held so far —
+        # so if a lock were taken first, this call would silently drop it
+        # before the read-modify-write below ever runs, reopening the
+        # exact race the locks exist to close (caught directly by
+        # tests/test_paper_concurrency.py). `quantity` here comes only
+        # from the risk evaluation, not from any locked row, so calling
+        # this first is safe — nothing below depends on it having
+        # happened after the locks.
         fill = await self.execution_adapter.fill(signal.asset.symbol, "BUY", quantity)
+
+        # Lock ordering matters: close_position locks position-then-account
+        # (it needs to know if there's anything to close before bothering
+        # to lock the shared cash row), so this method acquires the same
+        # two locks in the same order — position, then account — to avoid
+        # a lock-ordering deadlock between the two write paths under real
+        # concurrency (Postgres would otherwise be free to grant execute_signal
+        # the account lock while close_position holds the position lock, and
+        # vice versa, each waiting on the other). Nothing between here and
+        # the final commit() below calls fill()/get_quote() again, so these
+        # locks are held continuously through to the commit.
+        existing_position = await self._get_open_position(signal.asset_id)
+        account = await portfolio_module.get_account_for_update(self.db)
 
         now = datetime.now(UTC)
         order = PaperOrder(
@@ -102,7 +126,22 @@ class PaperTradingService:
             submitted_at=now,
         )
         self.db.add(order)
-        await self.db.flush()  # order.id needed for the fill's FK
+        try:
+            await self.db.flush()  # order.id needed for the fill's FK
+        except IntegrityError as exc:
+            # A genuine race: two concurrent calls both passed the
+            # `_get_order_by_signal_id` check above before either
+            # committed. `paper_orders.signal_id` is UNIQUE at the
+            # database level (docs/paper-trading.md §15) — that
+            # constraint is what actually prevents the duplicate order,
+            # this except only translates the resulting IntegrityError
+            # into the same clean 409 a sequential second call already
+            # gets, instead of leaking a raw database error as a 500.
+            await self.db.rollback()
+            raise ConflictError(
+                f"signal {signal_id} already has a paper order",
+                details={"signal_id": str(signal_id)},
+            ) from exc
 
         required_cash = fill.notional + fill.fee
         if required_cash > account.cash:
@@ -122,7 +161,6 @@ class PaperTradingService:
             )
             return order
 
-        existing_position = await self._get_open_position(signal.asset_id)
         existing_snapshot = (
             PositionSnapshot(existing_position.quantity, existing_position.avg_entry_price)
             if existing_position
@@ -195,13 +233,42 @@ class PaperTradingService:
         started = time.monotonic()
 
         asset = await self._get_asset_by_symbol(symbol)
+
+        # Provisional, *unlocked* read: only to learn a quantity to pass
+        # into fill() below. execution_adapter.fill() goes through
+        # MarketDataService.get_quote(), which eagerly commits — a lock
+        # taken here would be silently released by that commit before
+        # the real read-modify-write ever happens, exactly the race
+        # tests/test_paper_concurrency.py exists to catch. The
+        # authoritative, locked read happens after fill() returns.
+        provisional_position = await self._get_open_position(asset.id, for_update=False)
+        if provisional_position is None:
+            raise NotFoundError(f"no open position for {symbol!r}", details={"symbol": symbol})
+        provisional_quantity = provisional_position.quantity
+
+        fill = await self.execution_adapter.fill(symbol, "SELL", provisional_quantity)
+
+        # Lock ordering: position, then account — see execute_signal's
+        # matching comment on why the order must agree across both
+        # methods. Nothing after this point calls fill()/get_quote()
+        # again, so both locks are held continuously through to commit().
         position = await self._get_open_position(asset.id)
         if position is None:
             raise NotFoundError(f"no open position for {symbol!r}", details={"symbol": symbol})
-
+        if position.quantity != provisional_quantity:
+            # A genuine race: something else (a concurrent BUY adding to
+            # this position, most plausibly) changed the quantity between
+            # the provisional read and this lock. The already-computed
+            # `fill.fee`/`fill.notional` were sized for the stale
+            # quantity and are not safe to reuse — rather than silently
+            # mis-charge a fee, fail cleanly and ask the caller to retry
+            # against the now-current state.
+            raise ConflictError(
+                f"position for {symbol!r} changed while closing it — retry",
+                details={"symbol": symbol},
+            )
         quantity_to_close = position.quantity
-        account = await portfolio_module.get_account(self.db)
-        fill = await self.execution_adapter.fill(symbol, "SELL", quantity_to_close)
+        account = await portfolio_module.get_account_for_update(self.db)
 
         existing_snapshot = PositionSnapshot(position.quantity, position.avg_entry_price)
         try:
@@ -345,12 +412,43 @@ class PaperTradingService:
         )
         return result.scalar_one_or_none()
 
-    async def _get_open_position(self, asset_id: uuid.UUID) -> PaperPosition | None:
-        result = await self.db.execute(
-            select(PaperPosition).where(
-                PaperPosition.asset_id == asset_id, PaperPosition.status == "OPEN"
-            )
+    async def _get_open_position(
+        self, asset_id: uuid.UUID, *, for_update: bool = True
+    ) -> PaperPosition | None:
+        # FOR UPDATE: only ever called from execute_signal/close_position
+        # (both mutating paths). Without a row lock, two concurrent
+        # requests against the same asset (two BUYs, two closes, or a
+        # BUY racing a close) each read the same pre-mutation position,
+        # both compute their own update against that stale snapshot, and
+        # the second commit silently clobbers the first's — a lost
+        # update, not just a duplicate row (caught by
+        # tests/test_paper_concurrency.py). The lock makes the second
+        # request block until the first's transaction ends, then see the
+        # real current state (e.g. status already CLOSED) instead of a
+        # stale copy. `for_update=False` exists only for a provisional,
+        # pre-fill() read (close_position) that must not hold a lock
+        # across the market-data commit inside execution_adapter.fill().
+        stmt = select(PaperPosition).where(
+            PaperPosition.asset_id == asset_id, PaperPosition.status == "OPEN"
         )
+        if for_update:
+            # `of=PaperPosition`: PaperPosition.asset is `lazy="joined"`
+            # (a LEFT OUTER JOIN); plain `FOR UPDATE` can't lock across
+            # the nullable side of an outer join (Postgres rejects it
+            # outright), so the lock is scoped to just this table.
+            #
+            # `populate_existing()` is not optional: close_position's
+            # provisional (unlocked) read a few lines earlier already put
+            # this exact row into this session's identity map. Without
+            # this, SQLAlchemy silently returns that *same stale Python
+            # object* here instead of applying the freshly-locked row's
+            # values — the quantity-mismatch race check right after this
+            # call would then always compare a value against itself and
+            # never detect a real race (proven via the identical failure
+            # mode in RiskService._get_signal_for_update, fixed the same
+            # way — see that comment for the full mechanism).
+            stmt = stmt.with_for_update(of=PaperPosition).execution_options(populate_existing=True)
+        result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
     async def _get_asset_by_symbol(self, symbol: str) -> Asset:
