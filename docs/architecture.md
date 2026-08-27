@@ -38,6 +38,8 @@ The one invariant that shapes every other decision in this document: **the AI la
 
 > **Deviation, Phase 8**: the `ai-engine` package described in the table above shipped as `app/services/ai_analyst/`, matching every prior phase's already-established move away from a standalone `packages/*` tree. Its output schema also differs from the Phase 1 sketch — no numeric `confidence`, no price-level fields (`entry_zone_*`, `stop_loss`, `take_profit_*`) — see [ai-analyst.md](ai-analyst.md) §9 for the full list of deviations and why. The core invariant this document states in §1 ("the AI layer can suggest, never execute") is unchanged and, if anything, more strictly enforced: the Risk Engine does not read `AIAnalysis` at all (docs/ai-analyst.md §2), rather than reading a suggested action from it as §6 below sketches.
 
+> **Deviation, Phase 9**: no new package — the Command Center (`docs/command-center.md`) is a presentation-layer aggregation, `app/api/v1/command_center.py`, composing the same services every other router already depends on (`SignalService`, `RiskService`, `PaperTradingService`, `AIAnalystService`, `TechnicalAnalysisService`, `MarketDataService`). It adds `GET /command-center` (one snapshot replacing ~10 prior per-panel dashboard requests) but no new domain model, no new table, and no new business logic.
+
 `apps/api` is the composition root: it wires FastAPI routers to package services, owns the scheduler (APScheduler or equivalent, running the ingestion → ... → alerting pipeline on an interval), and owns nothing else — no business logic lives in `apps/api`.
 
 ## 4. Folder structure

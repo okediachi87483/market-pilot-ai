@@ -116,6 +116,14 @@ FastAPI, Pydantic v2 schemas for every request/response, OpenAPI docs auto-gener
 | **GET /backtests** | List the user's backtest runs with status and summary results. Auth: owner only. |
 | **POST /backtests** | Body: `{strategy_id, asset_ids[], date_from, date_to}`. `202` — backtests run asynchronously (can be long); response includes the `Backtest` id with `status: pending`, poll `GET /backtests/{id}` for completion. `422` if the date range is invalid or `asset_ids` is empty. Auth: owner only. |
 
+### Command Center — implemented in Phase 9, see [command-center.md](command-center.md) §2
+
+> Not in the Phase 1 sketch at all — added because the dashboard otherwise needed ~10 separate requests per load (one per panel). Read-only aggregation of existing service reads; no domain logic lives here.
+
+| | |
+|---|---|
+| **GET /command-center** | One snapshot: system health, one symbol's market overview, a watchlist strip, recent signals, recent AI analyses, the risk summary, the paper portfolio (with open positions and recent fills), and a merged recent-activity feed. Query: `symbol` (default `AAPL`), `interval` (default `1d`), `watchlist` (comma-separated, default `AAPL,MSFT,NVDA,TSLA`), `activity_limit` (default 15, max 50). `404` unknown `symbol`; `422` unsupported `interval`. An unknown watchlist symbol is silently skipped, never a failure. |
+
 ## 3. Deviations from the requested endpoint sketch
 
 - Added `POST /trades` (paper order submission) — the original list had no write path into paper trading, and one is required for the platform to do anything beyond observe.

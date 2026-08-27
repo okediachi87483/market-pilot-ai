@@ -8,6 +8,8 @@ import { StatusTag, type MarketState } from "@/components/ui/StatusTag";
 import { ApiError } from "@/lib/api";
 import { type AnalysisResponse, getAnalysis } from "@/lib/analysis";
 
+type MarketStateData = Pick<AnalysisResponse, "features" | "regime" | "candle_count" | "interval">;
+
 /**
  * MarketPilot's signature Market State visualization (Step 12) —
  * synthesizes trend, momentum, volatility, and volume into one glance.
@@ -19,12 +21,25 @@ import { type AnalysisResponse, getAnalysis } from "@/lib/analysis";
  * and trend_direction already returned by the API (see
  * docs/technical-analysis.md §"Signature visualization mapping"), not a
  * separately invented number.
+ *
+ * Pass `data` (Phase 9) when a caller already has the equivalent fields
+ * from another response (e.g. the Command Center snapshot) — this skips
+ * the component's own fetch entirely, so the same instrument renders in
+ * a denser layout without doubling the request count. Omit it (the
+ * original behavior) for standalone use elsewhere.
  */
-export function MarketStateVisualization({ symbol = "AAPL" }: { symbol?: string }) {
+export function MarketStateVisualization({
+  symbol = "AAPL",
+  data,
+}: {
+  symbol?: string;
+  data?: MarketStateData;
+}) {
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (data) return; // pre-fetched data supplied — no network call needed
     let cancelled = false;
     getAnalysis(symbol, "1d")
       .then((result) => {
@@ -38,9 +53,9 @@ export function MarketStateVisualization({ symbol = "AAPL" }: { symbol?: string 
     return () => {
       cancelled = true;
     };
-  }, [symbol]);
+  }, [symbol, data]);
 
-  if (error) {
+  if (!data && error) {
     return (
       <Card eyebrow="Market State" mock>
         <ErrorState message={error} retryable={false} />
@@ -48,7 +63,9 @@ export function MarketStateVisualization({ symbol = "AAPL" }: { symbol?: string 
     );
   }
 
-  if (!analysis) {
+  const resolved = data ?? analysis;
+
+  if (!resolved) {
     return (
       <Card eyebrow="Market State" mock className="flex flex-col items-center gap-3">
         <Skeleton className="h-40 w-[70%] max-w-[220px]" />
@@ -58,10 +75,10 @@ export function MarketStateVisualization({ symbol = "AAPL" }: { symbol?: string 
   }
 
   const needleAngle = needleAngleForFeatures(
-    analysis.features.trend_direction,
-    analysis.features.trend_alignment_score,
+    resolved.features.trend_direction,
+    resolved.features.trend_alignment_score,
   );
-  const regimeState = analysis.regime.regime as MarketState;
+  const regimeState = resolved.regime.regime as MarketState;
 
   return (
     <Card eyebrow="Market State" mock className="flex flex-col items-center gap-3">
@@ -113,14 +130,14 @@ export function MarketStateVisualization({ symbol = "AAPL" }: { symbol?: string 
       <StatusTag state={regimeState} />
 
       <p className="text-center text-xs leading-relaxed text-text-secondary">
-        Trend {analysis.features.trend_direction ?? "unknown"} (
-        {analysis.features.trend_alignment_label ?? "n/a"} alignment) &middot; momentum{" "}
-        {analysis.features.rsi_state ?? "n/a"} &middot; volatility{" "}
-        {analysis.features.volatility_state ?? "n/a"} &middot; volume{" "}
-        {analysis.features.volume_state ?? "n/a"}.
+        Trend {resolved.features.trend_direction ?? "unknown"} (
+        {resolved.features.trend_alignment_label ?? "n/a"} alignment) &middot; momentum{" "}
+        {resolved.features.rsi_state ?? "n/a"} &middot; volatility{" "}
+        {resolved.features.volatility_state ?? "n/a"} &middot; volume{" "}
+        {resolved.features.volume_state ?? "n/a"}.
       </p>
       <p className="text-center text-[10px] text-text-tertiary">
-        Detected from {analysis.candle_count} {analysis.interval} candles &middot; not a
+        Detected from {resolved.candle_count} {resolved.interval} candles &middot; not a
         recommendation.
       </p>
     </Card>

@@ -8,19 +8,12 @@ All components are React (Next.js App Router), TypeScript strict. Presentational
 
 | Component | Purpose | Reads from | Used on |
 |---|---|---|---|
-| `CommandCenter` | Top-level composition of the primary dashboard layout (grid of the components below). | — (layout only) | `/dashboard` |
-| `MarketOverview` | Global market status strip: session state (open/closed), index snapshot, timestamp. | `GET /market/{symbol}` (indices) | `/dashboard`, `/markets` |
-| `MarketStateVisualization` | The signature AI sentiment instrument (see [ui-design-system.md](ui-design-system.md) §"Signature UI concept"). Renders score, confidence, and state (BULLISH/BEARISH/NEUTRAL/HIGH_RISK/MARKET_CLOSED/VOLATILITY_EVENT) as a gauge, never a bare badge. | `GET /analysis/{symbol}` (portfolio-level aggregate for the dashboard instance; per-asset instance on `/ai-analyst`) | `/dashboard`, `/ai-analyst` |
-| `Watchlist` | User's tracked assets with live(ish) price, change %, and current signal. | `GET /watchlists`, `GET /market/{symbol}` per row | `/dashboard`, `/watchlist` |
-| `SignalPanel` | List of active signals; each row expandable into the full [premium signal card](ui-design-system.md). | `GET /signals` | `/dashboard`, `/signals` |
-| `AIInsightPanel` | DATA / ANALYSIS / SIGNAL / RISK / ACTION breakdown for one asset. | `GET /analysis/{symbol}` | `/ai-analyst` |
-| `PortfolioSummary` | Value, cash, daily/total P/L, sparkline. | `GET /portfolio` | `/dashboard`, `/portfolio` |
-| `RiskPanel` | Exposure, daily loss, drawdown, concurrent positions vs. configured limits. | `GET /risk` | `/dashboard`, `/risk` |
-| `PositionsTable` | Open (and, on `/positions`, closed) paper positions with unrealized/realized P/L. | `GET /positions` | `/dashboard`, `/positions` |
-| `AlertsTimeline` | Recent alerts feed, including profit-protection alerts. | `GET /alerts` | `/dashboard`, `/alerts` |
-| `MarketActivityTimeline` | Chronological log of signals generated, AI analyses updated, orders filled, alerts triggered. | Composed client-side from `GET /signals`, `GET /trades`, `GET /alerts` (recent, time-windowed) | `/dashboard` |
-| `PriceChart` | OHLCV chart for one asset (lightweight-charts). | `GET /market/{symbol}/history` | `/markets`, `/watchlist` (detail), `/ai-analyst` |
-| `PerformanceChart` | Portfolio equity curve over time. | `GET /portfolio/performance` | `/portfolio` |
+| `CommandCenter` | Top-level composition of the primary dashboard layout — as built (Phase 9), a grid of the sub-sections below off **one** aggregated snapshot, not N independent per-panel fetches. | `GET /command-center` (docs/command-center.md), `GET /analysis/{symbol}/indicators` (chart only) | `/dashboard` |
+| `MarketStateVisualization` | The signature Market State instrument (see [ui-design-system.md](ui-design-system.md) §7). Renders the detected regime (BULLISH/BEARISH/SIDEWAYS/HIGH_VOLATILITY/LOW_VOLATILITY/INSUFFICIENT_DATA) as a gauge, never a bare badge, and never a numeric AI confidence — the needle position is derived from the same deterministic `trend_alignment_score`/`trend_direction` the technical-analysis engine already computed. Accepts pre-fetched `data` (Phase 9) to avoid a duplicate request when embedded in `CommandCenter`; self-fetches via `GET /analysis/{symbol}` otherwise. | `GET /analysis/{symbol}` (self-fetch mode) or injected `data` | `/dashboard` |
+| `SignalCenter`/`SignalCard` | Full signal lifecycle for one symbol — signal, AI analysis, risk decision, paper trade status — reused directly (not duplicated) by both `/signals` and `/ai-analyst`. | `POST /signals/evaluate/{symbol}`, `POST /risk/evaluate/{signal_id}`, `POST /ai/analyze/{signal_id}`, `POST /paper/execute/{signal_id}` | `/signals`, `/ai-analyst` |
+| `PriceChart` | Price + EMA9/21 + SMA20 + Bollinger Bands + volume for one asset — all backend-calculated, the frontend only scales coordinates. | `GET /analysis/{symbol}/indicators` | `/markets`, `/dashboard` (Command Center hero) |
+
+The Command Center's own internal sections (Market Overview, Watchlist strip, AI Analyst summary, Risk Overview, Paper Portfolio, Active Signals, Recent Activity, System Health) are private to `CommandCenter.tsx` (docs/command-center.md) rather than independently reusable components — each is tightly coupled to the one aggregated snapshot's shape and has no reason to be instantiated on its own, the same reasoning `SignalCard`'s internal `AIAnalystSection` helper already established in Phase 8. `AlertsTimeline`/`PerformanceChart`/a real `Watchlist` backed by `GET /watchlists` remain not-yet-built (their owning phases — alerts/portfolio-analytics — haven't landed).
 
 Shared primitives (buttons, inputs, tables, cards, tags, tooltips, modals, empty/loading/error states) live in `apps/web/components/ui/` per [ui-design-system.md](ui-design-system.md) and are the only building blocks the components above are allowed to use for chrome — no ad hoc styling per screen.
 

@@ -3,7 +3,8 @@
 Sub-routers are added here as each owning package/service lands. Phase 3
 added assets and market data; Phase 4 added technical analysis; Phase 5
 added signals; Phase 6 added risk; Phase 7 added paper trading; Phase 8
-adds the AI Analyst.
+added the AI Analyst; Phase 9 adds the read-only Command Center
+aggregation endpoint.
 """
 
 from fastapi import APIRouter
@@ -11,6 +12,7 @@ from fastapi import APIRouter
 from app.api.v1.ai import router as ai_router
 from app.api.v1.analysis import router as analysis_router
 from app.api.v1.assets import router as assets_router
+from app.api.v1.command_center import router as command_center_router
 from app.api.v1.market import router as market_router
 from app.api.v1.paper import router as paper_router
 from app.api.v1.risk import router as risk_router
@@ -24,6 +26,7 @@ api_v1_router.include_router(signals_router)
 api_v1_router.include_router(risk_router)
 api_v1_router.include_router(paper_router)
 api_v1_router.include_router(ai_router)
+api_v1_router.include_router(command_center_router)
 
 
 @api_v1_router.get("/")

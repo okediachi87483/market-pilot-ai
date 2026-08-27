@@ -32,6 +32,8 @@ Requires Postgres and Redis reachable per `.env` — easiest via `docker compose
 ```
 app/
 ├── api/          HTTP routers — health checks (unversioned) + /api/v1 namespace
+│                 (v1/command_center.py, Phase 9, is a read-only aggregation
+│                 router with no owning service package — see below)
 ├── core/         settings, logging, error types — the only place environment variables are read
 ├── db/           Postgres + Redis connection management
 ├── models/       SQLAlchemy models — Asset, MarketData (Phase 3), Signal (Phase 5),
@@ -49,7 +51,7 @@ app/
 alembic/          migrations — see docs/market-data.md §4
 ```
 
-See [docs/architecture.md](../../docs/architecture.md), [docs/api.md](../../docs/api.md), [docs/market-data.md](../../docs/market-data.md), [docs/technical-analysis.md](../../docs/technical-analysis.md), [docs/signal-engine.md](../../docs/signal-engine.md), [docs/risk-engine.md](../../docs/risk-engine.md), [docs/paper-trading.md](../../docs/paper-trading.md), and [docs/ai-analyst.md](../../docs/ai-analyst.md) for the full design this implements.
+See [docs/architecture.md](../../docs/architecture.md), [docs/api.md](../../docs/api.md), [docs/market-data.md](../../docs/market-data.md), [docs/technical-analysis.md](../../docs/technical-analysis.md), [docs/signal-engine.md](../../docs/signal-engine.md), [docs/risk-engine.md](../../docs/risk-engine.md), [docs/paper-trading.md](../../docs/paper-trading.md), [docs/ai-analyst.md](../../docs/ai-analyst.md), and [docs/command-center.md](../../docs/command-center.md) for the full design this implements.
 
 ### A note on `mypy` on Windows
 

@@ -2,14 +2,15 @@
 
 Thirteen routes (`/paper` added in Phase 7; `/ai-analyst` implemented for real in Phase 8, see below — it existed as a placeholder route before then). Desktop is the primary experience (see [ui-design-system.md](ui-design-system.md) §1); mobile intelligently re-prioritizes rather than shrinking the desktop layout — each screen below states what that means concretely, not "responsive."
 
-## `/dashboard` — Command Center
+## `/dashboard` — Command Center (rebuilt in Phase 9, see [command-center.md](command-center.md))
 
-- **Primary user goal**: answer "what is the state of the market and my portfolio, right now?" in one glance.
-- **Important information**: global market status, AI Analyst preview (latest analysis's thesis/action/uncertainty alongside the deterministic signal and risk decision it was based on — see [ai-analyst.md](ai-analyst.md) §18), watchlist, active signals, portfolio performance, risk exposure, open positions, recent alerts, activity timeline.
-- **Primary actions**: open an asset's AI Analyst view; open a signal's full reasoning.
-- **Secondary actions**: add/remove a watchlist symbol inline; mark an alert read.
-- **Desktop layout**: three-column hero row (AI assessment / portfolio / risk), then watchlist+signals row, then positions+alerts row, then a full-width activity timeline — see the [Command Center mockup](../design/command-center/).
-- **Mobile behavior**: reorders to a single column, prioritized: AI assessment → portfolio summary (collapsed to headline numbers) → active signals → watchlist → positions → alerts. The activity timeline and detailed risk bars move to a "more" expansion rather than appearing by default — they're monitoring detail, not the mobile user's first need.
+- **Primary user goal**: answer, in one glance — what is the market doing, what signals exist, what does the AI Analyst think, what does the Risk Engine say, what is the paper portfolio doing, what happened recently, and is the system healthy.
+- **Important information**: system health strip (API/database/redis/market data/AI provider); Market Overview (selected symbol's price, interval, latest timestamp, regime, trend/momentum/volume/volatility state) with the price chart and the Market State instrument alongside it; a watchlist strip; the AI Analyst summary (thesis/action/uncertainty, the deterministic signal it was based on, an explicit disagreement banner when they differ — see [ai-analyst.md](ai-analyst.md) §18); Risk Overview (equity, exposure, drawdown, daily P/L, concurrent positions, active policy/version); Paper Portfolio (equity, cash, market value, unrealized/realized P/L, open positions, clearly labeled PAPER TRADING); Active Signals (direction, strength, status — CANDIDATE/RISK_APPROVED/RISK_REJECTED, always visually distinguished); Recent Activity (a real, backend-derived chronological feed — never fabricated rows, see docs/command-center.md §9 on the fake-data `AlertPreview` this replaced).
+- **Primary actions**: change the selected symbol/interval (drives Market Overview + chart + Market State together); follow a Recent Activity event or an "Open ... Center" link through to its owning page for full detail.
+- **Secondary actions**: none destructive on this screen — the Command Center is a read/navigate surface; risk review, AI analysis, and paper execution actions live on `/signals` and `/ai-analyst` (which share the same `SignalCenter`/`SignalCard`).
+- **Desktop layout**: hero row (Market Overview + chart, paired with the Market State instrument) visually dominates; a watchlist strip below it; a secondary three-column row (AI Analyst / Risk / Paper Portfolio) at equal, subordinate weight; a tertiary row (Active Signals, wide; Recent Activity, narrower).
+- **Mobile behavior**: every row collapses to a single column in the same top-to-bottom priority order already established above (hero first); no section is hidden behind a "more" affordance — Step "Responsive design" asks for an intentional single-column reflow, not a data-hiding one, and nothing here is heavy enough to warrant hiding by default.
+- **Refresh**: polls `GET /command-center` (+ the chart's own indicator series) every 30 seconds, plus immediately on symbol/interval change — see docs/command-center.md §7 for why polling, not a WebSocket, at this scale.
 
 ## `/markets`
 
