@@ -43,18 +43,25 @@ FastAPI, Pydantic v2 schemas for every request/response, OpenAPI docs auto-gener
 | **POST /watchlists/{id}/items** | Add an asset. Body: `{asset_id}`. `409 already_exists` if already present. Auth: owner only. |
 | **DELETE /watchlists/{id}/items/{asset_id}** | Remove an asset. `204` on success, `404` if not present. Auth: owner only. |
 
-### Signals
+### Technical analysis — implemented in Phase 4, see [technical-analysis.md](technical-analysis.md) §9
+
+> Deviation from the Phase 1 sketch: this document originally reserved `GET /analysis/{symbol}` for a future *AI* analysis endpoint (§"AI analysis" below, as originally sketched). Phase 4 built the deterministic technical-analysis engine first and claimed this path for it, since it's the more fundamental layer and matches the plan's own pipeline order (technical analysis before AI). A future AI Analyst endpoint (Phase 8) will need a **different** path — `/ai-analysis/{symbol}` is the natural choice — to avoid colliding with this one.
 
 | | |
 |---|---|
-| **GET /signals** | Active signals. Query: `asset_class`, `direction`, `min_strength`, pagination. Auth: any authenticated user. |
-| **GET /signals/{id}** | Single signal with its supporting/contradicting indicator detail expanded. `404` if not found. Auth: any authenticated user. |
+| **GET /analysis/{symbol}** | Current snapshot: price, all indicators, market features, detected regime. Query: `interval`. `404 not_found` if the symbol is unknown. |
+| **GET /analysis/{symbol}/indicators** | Full per-bar indicator time series for charting. Query: `interval`, `start`, `end`. |
+| **GET /analysis/{symbol}/regime** | Just the detected regime, its reasons, and candle count — a lighter call than the full snapshot. |
 
-### AI analysis
+### Signals — implemented in Phase 5, see [signal-engine.md](signal-engine.md) §9
+
+> Deviation from the Phase 1 sketch: `GET /signals/{id}` and `GET /signals/{symbol}` can't coexist at the same path shape (FastAPI can't distinguish a UUID from a ticker at the routing layer). Symbol-scoped listing is folded into `GET /signals`'s `symbol` query parameter instead — the same fix already applied to an analogous ambiguity in Phase 3.
 
 | | |
 |---|---|
-| **GET /analysis/{symbol}** | Latest `AIAnalysis` for the asset, in the structured schema defined in [ai-architecture.md](ai-architecture.md). `404 no_analysis` if none exists yet (distinct from `no_data` — the asset may have market data and no analysis if no signal has fired). Auth: any authenticated user. |
+| **GET /signals** | List signals. Query: `symbol`, `strategy_id`, `status`, `interval` (all optional filters), `limit`. |
+| **GET /signals/{id}** | Single signal by UUID, with full reasoning (`reasons`, `supporting_features`, `invalidating_conditions`). `404 not_found` if unknown. |
+| **POST /signals/evaluate/{symbol}** | Evaluates `symbol` against the `trend_momentum` strategy right now and returns the resulting `CANDIDATE` signal (existing, deduplicated, or newly created — see `was_newly_created`). No request body. Never executes anything — a read of what the deterministic strategy currently suggests. `404 not_found` if the symbol is unknown; `422 validation_error` if `interval` is unsupported. |
 
 ### Portfolio
 

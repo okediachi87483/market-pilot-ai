@@ -3,5 +3,6 @@
 from app.models.asset import Asset
 from app.models.base import Base
 from app.models.market_data import MarketData
+from app.models.signal import Signal
 
-__all__ = ["Base", "Asset", "MarketData"]
+__all__ = ["Base", "Asset", "MarketData", "Signal"]

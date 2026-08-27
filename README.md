@@ -15,7 +15,7 @@ Market Data -> Normalization -> Technical Analysis -> Signal Engine
    -> AI Analysis -> Risk Engine -> Paper Trading -> Portfolio -> Alerting -> Dashboard
 ```
 
-Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/market-data.md](docs/market-data.md), [docs/technical-analysis.md](docs/technical-analysis.md), [docs/ai-architecture.md](docs/ai-architecture.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
+Full design: [docs/architecture.md](docs/architecture.md) (start here), plus [docs/data-flow.md](docs/data-flow.md), [docs/market-data.md](docs/market-data.md), [docs/technical-analysis.md](docs/technical-analysis.md), [docs/signal-engine.md](docs/signal-engine.md), [docs/ai-architecture.md](docs/ai-architecture.md), [docs/risk-engine.md](docs/risk-engine.md), [docs/database.md](docs/database.md), [docs/api.md](docs/api.md), [docs/ui-design-system.md](docs/ui-design-system.md), and the rest of [docs/](docs/), including [architecture decision records](docs/decisions/).
 
 ## Technology stack
 
@@ -114,15 +114,14 @@ docker-compose.yml
 Makefile
 ```
 
-`packages/` (the domain packages — `signal_engine`, `ai_engine`, `risk_engine`, `paper_trading`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data and technical analysis (Phase 3/4's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in the Phase 3/4 completion reports.
+`packages/` (the domain packages — `ai_engine`, `risk_engine`, `paper_trading`, `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data, technical analysis, and the signal engine (Phase 3/4/5's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis,signal_engine}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in each phase's completion report.
 
 ## Current phase
 
-**Phase 4 — Technical Analysis Engine.** Deterministic indicators (SMA/EMA/RSI/MACD/Stochastic/ATR/Bollinger/Volume), market features, and a rule-based market regime classifier — all computed on demand from Phase 3's persisted market data, with no AI and no trading-decision logic anywhere in this layer. New endpoints: `GET /api/v1/analysis/{symbol}`, `/analysis/{symbol}/indicators`, `/analysis/{symbol}/regime`. The `/markets` page now shows a full technical-analysis panel and an EMA/SMA/Bollinger/volume chart, and the dashboard's signature visualization is now real — a "Market State" gauge driven by detected regime data, not a mock "AI" placeholder. Full detail: [docs/technical-analysis.md](docs/technical-analysis.md).
+**Phase 5 — Deterministic Signal Engine.** A transparent, versioned strategy (`trend_momentum_v1`) that turns Phase 4's regime/features into BUY/SELL/HOLD trade *candidates* — fully rule-based, no AI, no execution, no broker access. Every candidate carries its full reasoning (why it fired, what would invalidate it) and a documented, non-probabilistic strength score (WEAK/MODERATE/STRONG). New endpoints: `GET /api/v1/signals`, `/signals/{id}`, `POST /signals/evaluate/{symbol}`. The `/signals` route is now a real Signal Center; the dashboard's signal panel shows real evaluated signals instead of a fabricated confidence percentage. Full detail: [docs/signal-engine.md](docs/signal-engine.md).
 
 ## Upcoming phases
 
-5. Deterministic signal engine
 6. Deterministic risk engine
 7. Paper trading (simulated brokerage)
 8. AI analyst (Claude-based, schema-validated, risk-gated)

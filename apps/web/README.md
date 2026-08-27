@@ -30,13 +30,15 @@ components/
 ├── shell/      AppShell, Sidebar, TopBar — the persistent chrome
 ├── ui/         design-system primitives (Card, StatusTag, Skeleton, EmptyState, ErrorState)
 └── market/     MarketExplorer, PriceChart, AnalysisPanel, MarketStateVisualization,
-                WatchlistPreview — real API data (Phase 3/4); portfolio/risk/signals/alerts
-                remain mock placeholders until their owning phases land
+                SignalCenter, SignalCard, WatchlistPreview, SignalPreview — real API data
+                (Phase 3/4/5); portfolio/risk/alerts remain mock placeholders until
+                their owning phases land
 lib/            nav definitions, API fetch wrapper (api.ts), market data client
-                (marketData.ts), technical-analysis client (analysis.ts)
+                (marketData.ts), technical-analysis client (analysis.ts), signal
+                engine client (signals.ts)
 styles/         design tokens (docs/ui-design-system.md)
 ```
 
-`/markets` and the dashboard are wired to the real backend: `GET /api/v1/assets`, `/market/{symbol}`, `/analysis/{symbol}`, `/analysis/{symbol}/indicators` — the underlying market data itself is still mock end to end (docs/market-data.md, docs/technical-analysis.md), always labeled `SOURCE: MOCK`. The dashboard's signature gauge is now a real "Market State" visualization driven by the detected regime — see docs/technical-analysis.md §13 for why it's no longer labeled "AI" (there is no AI in this system yet).
+`/markets`, `/signals`, and the dashboard are wired to the real backend: `GET /api/v1/assets`, `/market/{symbol}`, `/analysis/{symbol}`, `/analysis/{symbol}/indicators`, `POST /signals/evaluate/{symbol}` — the underlying market data itself is still mock end to end (docs/market-data.md, docs/technical-analysis.md, docs/signal-engine.md), always labeled `SOURCE: MOCK`. The dashboard's signature gauge is a real "Market State" visualization driven by the detected regime (descriptive); the Signal Center (`/signals`) is the separate, prescriptive-within-a-named-strategy view of what `trend_momentum_v1` currently suggests — see docs/signal-engine.md §10 for why these stay visually and conceptually distinct.
 
 Design reference: [docs/ui-design-system.md](../../docs/ui-design-system.md) and the [Command Center canvas](../../docs/design/command-center/).

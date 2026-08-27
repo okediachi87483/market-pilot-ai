@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.services.market_data import MarketDataService
+from app.services.signal_engine import SignalService
 from app.services.technical_analysis import TechnicalAnalysisService
 
 
@@ -14,3 +15,10 @@ async def get_technical_analysis_service(
     market_data_service: MarketDataService = Depends(get_market_data_service),
 ) -> TechnicalAnalysisService:
     return TechnicalAnalysisService(market_data_service)
+
+
+async def get_signal_service(
+    db: AsyncSession = Depends(get_db),
+    technical_analysis_service: TechnicalAnalysisService = Depends(get_technical_analysis_service),
+) -> SignalService:
+    return SignalService(db, technical_analysis_service)
