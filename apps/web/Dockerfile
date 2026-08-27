@@ -10,7 +10,17 @@ RUN npm install
 FROM base AS builder
 COPY --from=deps /build/node_modules ./node_modules
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_PUBLIC_* values are inlined into the client bundle AT BUILD TIME
+# (runtime env cannot change them). The default preserves today's local
+# behavior exactly (lib/api.ts falls back to http://localhost:8000).
+# Production builds pass --build-arg NEXT_PUBLIC_API_URL="" — an empty
+# origin makes every API call a same-origin relative fetch
+# ("/api/v1/..."), which the production ALB path-routes to the API
+# service, so one image works for any domain with no CORS and no
+# per-domain rebuild (docs/infrastructure.md, "Single-origin routing").
+ARG NEXT_PUBLIC_API_URL="http://localhost:8000"
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 
 FROM base AS runtime

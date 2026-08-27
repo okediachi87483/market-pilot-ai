@@ -70,7 +70,7 @@ async def get_ai_analyst_engine() -> AIAnalystEngine | None:
     if not settings.ai_configured:
         return None
     provider = ClaudeProvider(
-        api_key=settings.ai_provider_api_key,  # type: ignore[arg-type]
+        api_key=settings.ai_api_key_clean,
         model=settings.ai_model,
         max_output_tokens=settings.ai_analyst_max_output_tokens,
         timeout_seconds=settings.ai_analyst_timeout_seconds,

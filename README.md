@@ -119,9 +119,15 @@ Makefile
 
 `packages/` (the domain packages — `portfolio`, `alerts`, `backtesting`, `audit`) is intentionally not present yet: each is created with real content when its owning phase begins, rather than as an empty placeholder. Market data, technical analysis, the signal engine, the risk engine, paper trading, and the AI Analyst (Phase 3/4/5/6/7/8's owning domains) live inside `apps/api/app/services/{market_data,technical_analysis,signal_engine,risk_engine,paper_trading,ai_analyst}/` rather than standalone `packages/`, for the same reason — see docs/architecture.md's "do not over-engineer" principle, recorded as a deviation in each phase's completion report. There is also no standalone `portfolio` package (docs/architecture.md §3's deviation note) — Phase 7's `paper_trading` package computes the portfolio state (equity, exposure, P/L, drawdown) both the risk engine and the dashboard need.
 
+## Production architecture (AWS)
+
+Phase 9.5 deploys the same application — unmodified architecture, same containers, same Alembic migrations — to AWS: ECS Fargate (api + web) behind one Application Load Balancer, RDS PostgreSQL and ElastiCache Redis in private subnets with no internet route, ECR with immutable image tags, Secrets Manager for `POSTGRES_PASSWORD`/`AI_PROVIDER_API_KEY` (never in the task definition or a log), CloudWatch logs/alarms, and GitHub Actions deploying via OIDC (no long-lived AWS keys). One ALB serves both services from one origin, so the frontend calls the API same-origin — no wildcard CORS. Optional Route 53/ACM for a real domain; the stack runs over plain HTTP on the ALB's own DNS name without one. Terraform (`infrastructure/terraform/`) is the infrastructure source of truth. Full detail: [docs/infrastructure.md](docs/infrastructure.md) (architecture, networking, security, cost) and [docs/aws-deployment.md](docs/aws-deployment.md) (bootstrap, deploy flow, rollback, runbook).
+
 ## Current phase
 
 **Phase 9 — MarketPilot Command Center.** The `/dashboard` route is rebuilt as the primary operational dashboard, driven by one new aggregated read endpoint (`GET /api/v1/command-center`) instead of the ~10 separate per-panel requests the previous dashboard made — a genuinely new endpoint, but a pure, read-only composition of the same services every other router already depends on, with no new domain logic or table. Eight sections, hierarchy-ordered (the market overview + chart + Market State instrument visually dominate; AI Analyst/Risk/Paper Portfolio sit as an equal-weight secondary row; Active Signals and Recent Activity follow): Market Overview, Market State, Active Signals, AI Analyst, Risk Overview, Paper Portfolio, Recent Activity, and System Health (API/database/redis/market data/AI provider). Every value is real backend data or an explicit unavailable/empty state — the old `AlertPreview` component, which rendered two hardcoded fake alert rows, is deleted along with every other superseded single-purpose preview card (`RiskPreview`, `PortfolioPreview`, `SignalPreview`, `WatchlistPreview`, `AIAnalystPreview`, `MarketStatusPreview`). Polls every 30 seconds, not a WebSocket, at this scale. Full detail: [docs/command-center.md](docs/command-center.md).
+
+Phase 9.5 (production readiness audit + AWS deployment, done out of the original roadmap order — see below) hardened the paper-trading and risk-evaluation write paths against genuine concurrency races, fixed a since-Phase-2 Docker healthcheck defect, and deployed the platform to AWS.
 
 ## Upcoming phases
 
@@ -130,7 +136,6 @@ Makefile
 12. Backtesting
 13. Test coverage expansion
 14. Observability (Prometheus/Grafana)
-15. CI/CD (GitHub Actions)
-16. AWS deployment (Terraform — not provisioned without explicit approval)
+15. CI/CD (GitHub Actions) — the GitHub Actions pipeline itself now exists (`.github/workflows/`, Phase 9.5), built alongside AWS deployment since one doesn't make sense without the other; broader CI/CD scope (branch protection policy, staging environment) remains here.
 
 See [docs/architecture.md](docs/architecture.md) for the full roadmap and rationale.

@@ -26,12 +26,21 @@ venv/
 *.pid
 
 # --- Terraform ---
+# State, saved plans, and real tfvars stay out of git — all three can
+# carry secrets in plaintext (a saved plan embeds resource attribute
+# values, e.g. a generated RDS password, exactly like state does). The
+# dependency lock file is deliberately COMMITTED — it pins exact
+# provider builds, the same role package-lock.json plays for npm.
 .terraform/
 *.tfstate
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
-.terraform.lock.hcl
+tfplan
+tfplan*
+*.tfplan
+crash.log
+crash.*.log
 
 # --- OS / editor ---
 .DS_Store

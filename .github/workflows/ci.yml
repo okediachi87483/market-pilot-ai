@@ -1,0 +1,106 @@
+# Pull-request pipeline: tests → lint → type check → build.
+# No AWS access, no deployment — deployment is deploy.yml, triggered
+# only by the protected `production` branch.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+  workflow_call: # reused as the test gate inside deploy.yml
+
+jobs:
+  backend:
+    name: Backend (pytest, ruff, mypy)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: marketpilot
+          POSTGRES_USER: marketpilot
+          POSTGRES_PASSWORD: marketpilot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U marketpilot -d marketpilot"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      # tests/conftest.py defaults to the local docker-compose port
+      # (5433); the CI service container publishes standard 5432.
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: marketpilot
+      POSTGRES_USER: marketpilot
+      POSTGRES_PASSWORD: marketpilot
+      REDIS_HOST: localhost
+      REDIS_PORT: "6379"
+
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Migrate (the same Alembic chain production runs)
+        run: alembic upgrade head
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Mypy
+        run: mypy app
+
+      - name: Pytest
+        run: pytest -q
+
+  frontend:
+    name: Frontend (vitest, eslint, tsc, next build)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test -- --run
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build

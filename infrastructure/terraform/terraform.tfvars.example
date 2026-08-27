@@ -1,0 +1,44 @@
+# Copy to terraform.tfvars and adjust. terraform.tfvars is gitignored
+# (only this .example is committed) — never commit real values.
+
+aws_region  = "us-east-1"
+project     = "marketpilot"
+environment = "prod"
+
+# --- networking -------------------------------------------------------------
+# Distinct from any VPC CIDR already in your account.
+vpc_cidr = "10.20.0.0/16"
+az_count = 2
+
+# --- ECS sizing (conservative; raise when load demands it) ------------------
+api_cpu           = 256
+api_memory        = 512
+web_cpu           = 256
+web_memory        = 512
+api_desired_count = 1
+web_desired_count = 1
+
+# --- database ---------------------------------------------------------------
+db_engine_version        = "16.6"
+db_instance_class        = "db.t4g.micro"
+db_allocated_storage     = 20
+db_backup_retention_days = 7
+# Flip both of these the moment the database holds data you'd miss:
+db_deletion_protection = false # true for real production
+db_skip_final_snapshot = true  # false for real production
+
+# --- redis ------------------------------------------------------------------
+redis_node_type = "cache.t4g.micro"
+
+# --- application ------------------------------------------------------------
+ai_provider        = "anthropic"
+ai_model           = "claude-sonnet-5"
+log_level          = "INFO"
+log_retention_days = 30
+
+# --- domain / HTTPS (leave empty to serve HTTP on the ALB DNS name) ---------
+# domain_name        = "marketpilot.example.com"
+# create_hosted_zone = true
+
+# --- CI/CD (leave empty until the repo has a GitHub remote) -----------------
+# github_repository = "your-github-user/marketpilot"

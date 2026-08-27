@@ -1,0 +1,150 @@
+# Production deployment — push to the protected `production` branch
+# (or manual dispatch). Sequence (docs/aws-deployment.md, "Deploy flow"):
+#
+#   tests → docker build (git-SHA tags) → push to ECR (scan-on-push)
+#   → one-off Alembic migration task → wait for it to succeed
+#   → register new task definitions → update ECS services
+#   → wait services-stable → smoke tests against the live ALB
+#
+# Auth: GitHub OIDC → the marketpilot-prod-github-deploy IAM role
+# (infrastructure/terraform/iam.tf). No long-lived AWS keys exist in
+# GitHub secrets. Required repository configuration:
+#
+#   variables: AWS_REGION, AWS_DEPLOY_ROLE_ARN (terraform output
+#              github_deploy_role_arn), ECS_CLUSTER, SITE_ORIGIN
+#              (terraform output site_origin)
+#
+# Images are IMMUTABLE-tagged with the commit SHA — the deployed version
+# is always exactly identifiable, and rollback is "deploy the previous
+# SHA" (docs/aws-deployment.md, "Rollback").
+
+name: Deploy
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # OIDC token for AWS role assumption
+  contents: read
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false # never cancel a half-finished deployment
+
+jobs:
+  test:
+    name: Full test suite
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Build, migrate, deploy
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      CLUSTER: ${{ vars.ECS_CLUSTER }}
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC — no stored keys)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        run: |
+          REPO="${{ steps.ecr.outputs.registry }}/marketpilot-api"
+          docker build -t "$REPO:$IMAGE_TAG" apps/api
+          docker push "$REPO:$IMAGE_TAG"
+          echo "API_IMAGE=$REPO:$IMAGE_TAG" >> "$GITHUB_ENV"
+
+      - name: Build and push Web image (same-origin API URL)
+        run: |
+          REPO="${{ steps.ecr.outputs.registry }}/marketpilot-web"
+          # NEXT_PUBLIC_API_URL="" bakes same-origin relative API calls
+          # into the bundle — the ALB path-routes /api/* to the API
+          # service, so no CORS and no per-domain rebuilds.
+          docker build --build-arg NEXT_PUBLIC_API_URL="" -t "$REPO:$IMAGE_TAG" apps/web
+          docker push "$REPO:$IMAGE_TAG"
+          echo "WEB_IMAGE=$REPO:$IMAGE_TAG" >> "$GITHUB_ENV"
+
+      - name: Register new task definitions with the SHA-tagged images
+        run: |
+          for FAMILY in marketpilot-prod-api marketpilot-prod-migrate; do
+            aws ecs describe-task-definition --task-definition "$FAMILY" \
+              --query 'taskDefinition' > td.json
+            python3 - "$FAMILY" <<'EOF'
+          import json, sys
+          import os
+          td = json.load(open("td.json"))
+          for k in ("taskDefinitionArn","revision","status","requiresAttributes",
+                    "compatibilities","registeredAt","registeredBy"):
+              td.pop(k, None)
+          for c in td["containerDefinitions"]:
+              c["image"] = os.environ["API_IMAGE"]
+          json.dump(td, open("td-new.json","w"))
+          EOF
+            aws ecs register-task-definition --cli-input-json file://td-new.json > /dev/null
+          done
+          aws ecs describe-task-definition --task-definition marketpilot-prod-web \
+            --query 'taskDefinition' > td.json
+          python3 - <<'EOF'
+          import json, os
+          td = json.load(open("td.json"))
+          for k in ("taskDefinitionArn","revision","status","requiresAttributes",
+                    "compatibilities","registeredAt","registeredBy"):
+              td.pop(k, None)
+          for c in td["containerDefinitions"]:
+              c["image"] = os.environ["WEB_IMAGE"]
+          json.dump(td, open("td-new.json","w"))
+          EOF
+          aws ecs register-task-definition --cli-input-json file://td-new.json > /dev/null
+
+      - name: Run database migration task and wait for success
+        run: |
+          SUBNETS=$(aws ecs describe-services --cluster "$CLUSTER" --services api \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets' --output text | tr '\t' ',')
+          SG=$(aws ecs describe-services --cluster "$CLUSTER" --services api \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.securityGroups[0]' --output text)
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition marketpilot-prod-migrate \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' --output text)
+          echo "migration task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+          echo "migration exit code: $EXIT_CODE"
+          test "$EXIT_CODE" = "0"
+
+      - name: Deploy services
+        run: |
+          aws ecs update-service --cluster "$CLUSTER" --service api \
+            --task-definition marketpilot-prod-api > /dev/null
+          aws ecs update-service --cluster "$CLUSTER" --service web \
+            --task-definition marketpilot-prod-web > /dev/null
+          aws ecs wait services-stable --cluster "$CLUSTER" --services api web
+
+      - name: Smoke tests
+        run: |
+          ORIGIN="${{ vars.SITE_ORIGIN }}"
+          set -x
+          curl -fsS "$ORIGIN/health" > /dev/null
+          curl -fsS "$ORIGIN/health/live" > /dev/null
+          curl -fsS "$ORIGIN/health/ready" > /dev/null
+          curl -fsS "$ORIGIN/api/v1/" > /dev/null
+          curl -fsS "$ORIGIN/api/v1/command-center?symbol=AAPL" > /dev/null
+          curl -fsS "$ORIGIN/dashboard" > /dev/null

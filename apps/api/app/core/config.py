@@ -49,8 +49,16 @@ class Settings(BaseSettings):
     ai_analyst_cooldown_minutes: int = 15
 
     @property
+    def ai_api_key_clean(self) -> str:
+        """The API key with surrounding whitespace stripped — Secrets
+        Manager placeholders and CLI-set values commonly carry a stray
+        space or trailing newline, which must neither count as
+        "configured" nor be sent to the provider verbatim."""
+        return (self.ai_provider_api_key or "").strip()
+
+    @property
     def ai_configured(self) -> bool:
-        return bool(self.ai_provider_api_key)
+        return bool(self.ai_api_key_clean)
 
     # Phase 6/7: the one simulated paper-trading account's starting cash
     # and equity — see docs/paper-trading.md §"Cash accounting". Read

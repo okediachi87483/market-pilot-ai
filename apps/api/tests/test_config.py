@@ -30,3 +30,16 @@ def test_database_url_assembled_from_parts() -> None:
 
 def test_get_settings_is_cached() -> None:
     assert get_settings() is get_settings()
+
+
+def test_ai_configured_treats_whitespace_only_key_as_unconfigured() -> None:
+    # Secrets Manager placeholder values and CLI-set secrets commonly
+    # carry a stray space or trailing newline — neither may count as a
+    # configured provider, and a real key must reach the provider with
+    # its whitespace stripped (see infrastructure/terraform/secrets.tf).
+    assert Settings(_env_file=None, ai_provider_api_key=" ").ai_configured is False
+    assert Settings(_env_file=None, ai_provider_api_key="\n").ai_configured is False
+    assert Settings(_env_file=None, ai_provider_api_key=None).ai_configured is False
+    settings = Settings(_env_file=None, ai_provider_api_key=" sk-test-value\n")
+    assert settings.ai_configured is True
+    assert settings.ai_api_key_clean == "sk-test-value"
