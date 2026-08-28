@@ -28,6 +28,18 @@ def test_database_url_assembled_from_parts() -> None:
     assert settings.database_url == "postgresql+asyncpg://u:p@h:5555/d"
 
 
+def test_redis_url_defaults_to_plaintext() -> None:
+    settings = Settings(_env_file=None, redis_host="h", redis_port=6380, redis_db=2)
+    assert settings.redis_url == "redis://h:6380/2"
+
+
+def test_redis_url_uses_tls_scheme_when_enabled() -> None:
+    settings = Settings(
+        _env_file=None, redis_host="h", redis_port=6380, redis_db=2, redis_tls_enabled=True
+    )
+    assert settings.redis_url == "rediss://h:6380/2"
+
+
 def test_get_settings_is_cached() -> None:
     assert get_settings() is get_settings()
 

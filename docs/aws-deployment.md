@@ -111,6 +111,21 @@ aws ecs update-service --cluster marketpilot-prod --service api --force-new-depl
 
 An empty/whitespace key is a fully supported state — `Settings.ai_configured` (hardened in this phase to `.strip()` the value first) reports `false`, `GET /ai/status` reports `configured: false`, and every deterministic pipeline stage (market data, signals, risk, paper trading) keeps working — the Phase 8 fail-closed design, unaffected by AWS.
 
+## 6a. Redis TLS rollout
+
+Phase 9.8 added application-side support for `rediss://` (`Settings.redis_tls_enabled`, default `false` — see `apps/api/app/core/config.py`), but the platform still runs with transit encryption **off** end to end. Flipping it is a coupled, two-sided change — the AWS flag and the application's connection scheme must change together, or Redis connectivity breaks outright. Do not flip `redis_transit_encryption_enabled` alone.
+
+The exact sequence, once a human has decided to do this:
+
+1. Confirm the currently-deployed API image actually contains the `redis_tls_enabled` support (i.e. this phase's commit or later is what's running in ECS — check via `aws ecs describe-task-definition` image tag, or simply redeploy first).
+2. `terraform plan` with `redis_transit_encryption_enabled = true` set in `terraform.tfvars` — confirm it reports an **in-place update** to `aws_elasticache_replication_group.main` (verified non-destructive in Phase 9.7/9.8 with the pinned provider: `0 to add, 1 to change, 0 to destroy`). If it ever reports a replacement instead (e.g. after a provider upgrade), stop and re-evaluate — do not apply blind.
+3. `terraform apply` — this changes the live ElastiCache cluster's transit-encryption setting. The same apply also flips the ECS task definition's `REDIS_TLS_ENABLED` environment variable (both are driven by the one Terraform variable, `infrastructure/terraform/ecs.tf`), but ECS does not restart running tasks on a task-definition-only change.
+4. `aws ecs update-service --cluster marketpilot-prod --service api --force-new-deployment` (and `web`, if it ever talks to Redis directly) so running tasks actually pick up `REDIS_TLS_ENABLED=true` and reconnect over `rediss://`.
+5. Verify `GET /health/ready` stays `200` (Redis is one of its checks) and tail the API's CloudWatch log group for connection errors for a few minutes after the deploy.
+6. If anything fails: revert by setting `redis_transit_encryption_enabled = false` again, `apply`, `force-new-deployment` — the app's plaintext `redis://` path is preserved exactly as it was, so this is a clean rollback, not a data-loss risk (Redis holds no authoritative data).
+
+Not performed in Phase 9.8: no GitHub CI/CD path exists yet to deploy the application-side change through the normal pipeline (§10/§11), and manually pushing an image + forcing a production ECS deployment outside that pipeline is exactly the kind of hard-to-reverse, shared-system action this project's own rules require a human go-ahead for — so the Terraform variable stays at its default (`false`), zero drift is preserved, and this section documents the rollout for whenever a human approves it.
+
 ## 7. Domain setup
 
 See [docs/infrastructure.md](infrastructure.md) §9 for the full Terraform-variable walkthrough. Short version: set `domain_name` (+ `create_hosted_zone` as appropriate), `apply`, then point your registrar at the output name servers if Terraform created the zone. Without a domain, the platform is fully functional over plain HTTP on the ALB's own DNS name — HTTPS is additive, not a hard requirement to deploy.

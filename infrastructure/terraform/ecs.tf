@@ -58,6 +58,7 @@ locals {
     { name = "POSTGRES_USER", value = var.db_username },
     { name = "REDIS_HOST", value = aws_elasticache_replication_group.main.primary_endpoint_address },
     { name = "REDIS_PORT", value = "6379" },
+    { name = "REDIS_TLS_ENABLED", value = tostring(var.redis_transit_encryption_enabled) },
     { name = "AI_PROVIDER", value = var.ai_provider },
     { name = "AI_MODEL", value = var.ai_model },
     { name = "RUN_MIGRATIONS_ON_STARTUP", value = "false" },

@@ -29,6 +29,10 @@ db_skip_final_snapshot = true  # false for real production
 
 # --- redis ------------------------------------------------------------------
 redis_node_type = "cache.t4g.micro"
+# Flip only after confirming the deployed application image actually
+# supports rediss:// (Settings.redis_tls_enabled) — flipping this
+# without a matching app deploy breaks Redis connectivity outright.
+# redis_transit_encryption_enabled = true
 
 # --- application ------------------------------------------------------------
 ai_provider        = "anthropic"

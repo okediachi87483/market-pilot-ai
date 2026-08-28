@@ -163,6 +163,20 @@ variable "redis_node_type" {
   default     = "cache.t4g.micro"
 }
 
+variable "redis_transit_encryption_enabled" {
+  description = <<-EOT
+    Enables ElastiCache in-transit encryption AND switches the
+    application to rediss:// in one apply — the two sides are coupled
+    deliberately, since flipping only one would break connectivity.
+    Default false preserves the current plaintext redis:// model.
+    Phase 9.8 proved the AWS-side flip is a non-destructive in-place
+    update (see docs/aws-deployment.md §"Redis TLS"); this variable is
+    the switch, not yet flipped to true in any checked-in tfvars.
+  EOT
+  type        = bool
+  default     = false
+}
+
 # --- application configuration --------------------------------------------
 
 variable "ai_provider" {

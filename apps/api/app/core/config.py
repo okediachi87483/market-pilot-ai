@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0
+    # False preserves local-dev/current-production behavior (plain
+    # `redis://`, no cert handling). True switches the client to
+    # `rediss://` — redis-py then validates the server certificate
+    # against the system CA trust store; no cert is hardcoded here
+    # (Phase 9.8, docs/aws-deployment.md §"Redis TLS").
+    redis_tls_enabled: bool = False
 
     # Represented architecturally per docs/ai-architecture.md; no key is
     # required to run the Phase 2 foundation. Phase 8 (docs/ai-analyst.md)
@@ -86,7 +92,8 @@ class Settings(BaseSettings):
 
     @property
     def redis_url(self) -> str:
-        return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
+        scheme = "rediss" if self.redis_tls_enabled else "redis"
+        return f"{scheme}://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
 
 @lru_cache
