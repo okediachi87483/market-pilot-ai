@@ -42,7 +42,14 @@ jobs:
     name: Build, migrate, deploy
     needs: test
     runs-on: ubuntu-latest
-    environment: production
+
+    # No `environment:` here deliberately: setting one changes the OIDC
+    # token's `sub` claim from `repo:<owner>/<repo>:ref:refs/heads/<branch>`
+    # to `repo:<owner>/<repo>:environment:<name>`, which the deploy role's
+    # trust policy (infrastructure/terraform/iam.tf) does not match —
+    # confirmed by a real failed run (AccessDenied: Not authorized to
+    # perform sts:AssumeRoleWithWebIdentity). No GitHub Environment
+    # protection rules were ever configured, so nothing is lost.
 
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
