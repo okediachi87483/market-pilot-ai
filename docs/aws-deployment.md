@@ -2,16 +2,19 @@
 
 Phase 9.5 (initial deployment), hardened in Phase 9.6 (go-live operational verification — see §10). Operational companion to [docs/infrastructure.md](infrastructure.md) (architecture reference) — this document is "how to actually do things": bootstrap, deploy, roll back, set secrets, and answer the on-call questions in §8.
 
-## 0. Current status (as of Phase 9.6)
+## 0. Current status (as of Phase 9.7)
 
 | Item | Status |
 |---|---|
-| AWS infrastructure | **Live**, zero Terraform drift as of this phase's audit |
+| AWS infrastructure | **Live**, zero Terraform drift (re-confirmed Phase 9.7) |
 | Production URL | `http://marketpilot-prod-alb-1177715901.us-east-1.elb.amazonaws.com` (HTTP only) |
-| Domain / HTTPS | **Blocked** — no domain available yet (§4/§10) |
-| GitHub repository / CI-CD execution | **Blocked** — no GitHub remote configured, `gh` CLI not installed in this environment (§10) |
-| Claude / AI Analyst | **Wiring verified, not activated** — no real API key available; `GET /ai/status` correctly reports `configured: false` (§6, §10) |
-| Terraform drift | **None** — `terraform plan` reports "No changes" as of the Phase 9.6 audit |
+| Domain / HTTPS | **Blocked** — no domain available yet (§4/§10/§11) |
+| GitHub repository | **Blocked** — no remote configured, `gh` CLI not installed, and the one SSH keypair present in this environment fails `ssh -T git@github.com` (Permission denied) — not usable (§11) |
+| CI/CD execution | **Blocked** — same reason; `ci.yml`/`deploy.yml` audited and correct, never actually run |
+| GitHub OIDC role | **Not created** — trust policy scoped to an exact repo+branch (never `repo:*`), stays uncreated until the repository identity is known (§11) |
+| Claude / AI Analyst | **Wiring verified, not activated** — no real API key available; `GET /ai/status` correctly reports `configured: false` (§6, §10, §11) |
+| Terraform drift | **None** — re-verified live, including after a reverted Redis TLS probe (§11) |
+| Redis transit encryption | **Off** — AWS-side change is low-risk (in-place, non-destructive per the pinned provider — verified this phase), but the application has no TLS-capable Redis client yet; a real two-sided migration, not attempted (§11) |
 
 ## 1. Prerequisites
 
@@ -157,3 +160,55 @@ A follow-on pass to move from "infrastructure deployed" to "operationally verifi
 - Full production pipeline, executed live against the real ALB (not a rehearsal): evaluated `NVDA` at `15m` → real `BUY`/`CANDIDATE` signal → `POST /risk/evaluate` → `APPROVED`, size `37.1222807929` computed by the Risk Engine (not supplied by AI, not supplied by the caller) → `POST /paper/execute` → `FILLED` at `134.69` → portfolio `equity`/`cash` updated correctly, `open_position_count: 1`. `GET /ai/status` still `configured: false` throughout — the AI Analyst's absence never touched any step of this. This is the same guarantee proven structurally in the Phase 9.5 audit, now also proven live in the actual production environment.
 
 No application code, risk logic, or paper-trading logic was touched in this phase — there was no genuine production defect to fix (§2's workflow audit and §"Full pipeline" above are the closest this phase came to a code-level check, and both passed clean).
+
+## 11. Phase 9.7 — production connectivity, release automation, final deployment readiness
+
+Scope: close the remaining CI/CD gap the workflow audit could still find, re-confirm the three environmental blockers with fresh evidence (not merely re-state Phase 9.6's), and correct one piece of prior documentation that turned out to be more conservative than the actual AWS/provider behavior. No trading logic, risk logic, or database schema was touched — Phase 9.7 is explicitly not Phase 10.
+
+**GitHub — re-confirmed blocked, with stronger evidence than Phase 9.6:**
+
+- `gh --version` / `gh auth status` — command not found (checked via both Bash and PowerShell `Get-Command gh`). No GitHub CLI available in this environment.
+- `git remote -v` — empty, as in Phase 9.6.
+- New this phase: the one SSH keypair present in this environment (`~/.ssh/github_actions_ec2`) was tested with a safe, read-only `ssh -T git@github.com`. It returned **`Permission denied (publickey)`** — this key is not registered against any GitHub account reachable from here. This rules out the one plausible alternative to `gh` before reporting the blocker, rather than stopping at "no CLI installed."
+- Conclusion: **`GITHUB_REMOTE_MISSING`** and **`GITHUB_AUTH_REQUIRED`** both still apply. No repository URL, token, or credential was invented. The `github_repository` Terraform variable remains unset; the OIDC provider/deploy role stay uncreated (see `infrastructure/terraform/iam.tf` — every OIDC/deploy-role resource is gated `count = var.github_repository != "" ? 1 : 0`, confirmed by inspection this phase, unchanged).
+
+**CI/CD — one genuine gap found and closed; no other defect:**
+
+- `.github/workflows/ci.yml` and `deploy.yml` were re-read line-by-line. `deploy.yml` was already correct: OIDC-only (`permissions: id-token: write`, only `${{ vars.* }}` references, no `secrets.AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` anywhere), migration run as a one-off `aws ecs run-task` + `wait tasks-stopped` + exit-code check gating the service update, `aws ecs wait services-stable`, then a post-deploy smoke test (`/health`, `/health/live`, `/health/ready`, `/api/v1/`, `/api/v1/command-center?symbol=AAPL`, `/dashboard`) — no change made.
+- `ci.yml` was missing a step its own intended pipeline names: a Docker build validation. Previously a broken `apps/api/Dockerfile` or `apps/web/Dockerfile` would only be discovered by `deploy.yml`, which only runs on the protected `production` branch — too late to catch on a PR. Added a `docker-build` job (no ECR login, no push, no AWS access — pure local `docker build`) that builds both images with the same build args production uses (`--build-arg NEXT_PUBLIC_API_URL=""` for web). Verified locally: both builds succeed (`docker build -t marketpilot-api:ci apps/api` and the web equivalent, exit 0). YAML validity of both files confirmed via `yaml.safe_load()`.
+- Because there is no GitHub remote/auth, this workflow still has **never actually executed** on GitHub's infrastructure — audited and locally validated only. **`GITHUB_REPOSITORY_IDENTITY_REQUIRED`** applies to actually running it: even with auth, a repository must exist and be named before `deploy.yml`'s protected-branch trigger or the OIDC trust policy's `repo:<owner>/<repo>:ref:refs/heads/production` condition mean anything.
+
+**Domain / HTTPS — re-confirmed blocked, unchanged from Phase 9.6:**
+
+- No domain, Route 53 hosted zone, or ACM certificate is available in this account or environment. **`DOMAIN_REQUIRED_FOR_HTTPS`** applies. The ALB continues serving plain HTTP only; nothing was invented or defaulted to a placeholder domain.
+
+**Claude / AI Analyst — re-confirmed blocked, re-verified live this phase:**
+
+- No real Anthropic API key is present anywhere in this environment (`.env`, shell environment both checked). **`ANTHROPIC_API_KEY_REQUIRED`** applies.
+- Re-verified live against the production ALB this phase (not merely re-stated): `GET /api/v1/ai/status` → `{"configured":false,"available":false,"provider":"anthropic","model":"claude-sonnet-5"}`; the same `configured: false` surfaces correctly inside `GET /api/v1/command-center?symbol=AAPL`'s `system_health.ai` block, alongside `api`/`database`/`redis`/`market_data` all reporting `ok`. The wiring is provably correct; only the key is missing.
+
+**Redis transit encryption — corrected this phase, not merely re-stated:**
+
+- Phase 9.5/9.6 documentation assumed enabling `transit_encryption_enabled` on the live ElastiCache replication group would be a destructive replacement. This phase tested that assumption directly with a local-only, never-applied probe: temporarily edited `infrastructure/terraform/redis.tf` to `transit_encryption_enabled = true`, ran `terraform plan`, and observed `aws_elasticache_replication_group.main` reported as an **in-place update** — `Plan: 0 to add, 1 to change, 0 to destroy` — not a replacement, with the pinned AWS provider (`~> 6.0`). The edit was immediately reverted; a follow-up `terraform plan` confirmed **"No changes. Your infrastructure matches the configuration"** and `git diff --stat`/`git status --short` on the file were both empty — zero residual change from the probe.
+- This corrects the infrastructure-side risk assessment, but does **not** clear the blocker: `app/db/redis.py` (`Redis.from_url(settings.redis_url, ...)`) and `Settings.redis_url` (`apps/api/app/core/config.py`) construct only plain `redis://` URLs — no `rediss://`, no TLS/cert handling anywhere in the client. Flipping the AWS-side flag without a coordinated application-side change (a `rediss://`-capable client, plus AWS's own phased `transit_encryption_mode` rollout — `preferred` before `required` — to avoid a hard connectivity break) would be a real, two-sided migration. **`REDIS_TLS_MIGRATION_REQUIRED`** applies; not attempted blind, per the phase's own rule against unnecessary infrastructure changes.
+- `docs/infrastructure.md` §"Known limitations" updated to record this correction.
+
+**Dependency security — re-verified against the actual built images, not source-level assumption:**
+
+- `apps/web`: `package.json` declares a top-level `postcss` (for Tailwind via `@tailwindcss/postcss`), and `postcss.config.mjs` exists, but `grep -rln "postcss" app/ components/ lib/` is empty — application code never invokes it directly. Inspected the actual built runtime image (`docker run --rm marketpilot-web:ci sh -c "find / -iname 'postcss*' ..."`): postcss binaries/loaders are present under `node_modules/next/...` inside the standalone image (Next.js's `output: "standalone"` bundles a trimmed `node_modules` into the runtime, not just the build stage). Conclusion: present in the image, but unreachable at request time — the standalone server does zero request-time CSS/postcss work; all processing happens once at `npm run build`.
+- `apps/api`: inspected the built runtime image for known-vulnerable-in-source packages. `pytest`, `ruff`, `mypy` confirmed **absent** (the Dockerfile's non-dev `pip install --prefix=/install .` correctly excludes them). `starlette` confirmed **present** and importable — genuinely a runtime, production-container-affecting dependency (FastAPI's transitive dependency), not a dev-only false positive.
+- No blind `npm audit fix --force` or major-version bump was performed — the phase's rule against blind dependency changes was followed; this workstream was re-verification of exposure, not remediation, since no actionable, currently-unpatched runtime CVE was found requiring an immediate bump.
+
+**Production smoke tests — executed fresh this phase against the live ALB** (`http://marketpilot-prod-alb-1177715901.us-east-1.elb.amazonaws.com`):
+
+| Check | Result |
+|---|---|
+| `GET /health`, `/health/live`, `/health/ready` | 200 |
+| `GET /api/v1/` | 200 |
+| `GET /dashboard`, `/markets`, `/signals`, `/risk`, `/paper`, `/ai-analyst` | 200 |
+| `GET /api/v1/command-center?symbol=AAPL` | 200 — full aggregation returned (`system_health`: api/database/redis/market_data all `ok`, ai `configured:false` as expected; `market` block populated for AAPL from the mock provider) |
+| `GET /api/v1/ai/status` | `{"configured":false,"available":false,...}` — correct given no key |
+
+**Terraform drift — re-verified this phase, including after the Redis probe above:** `terraform plan` → **"No changes. Your infrastructure matches the configuration."**
+
+**Summary of blockers carried forward, all with fresh Phase 9.7 evidence:** `GITHUB_REMOTE_MISSING`, `GITHUB_AUTH_REQUIRED`, `GITHUB_REPOSITORY_IDENTITY_REQUIRED`, `DOMAIN_REQUIRED_FOR_HTTPS`, `ANTHROPIC_API_KEY_REQUIRED`, `REDIS_TLS_MIGRATION_REQUIRED`. None of these were worked around, faked, or defaulted past — each requires a specific human action outside this environment (see the Final Report's recommendation).

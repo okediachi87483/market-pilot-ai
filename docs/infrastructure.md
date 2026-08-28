@@ -141,7 +141,7 @@ Every variable in `app/core/config.py::Settings` is preserved under its existing
 
 ## 11. Known limitations
 
-- Redis has no transit encryption (§6) — a deliberate, bounded tradeoff (Redis is cache/pub-sub only, never authoritative, per `docs/architecture.md`).
+- **Redis has no transit encryption** (§6) — a deliberate, bounded tradeoff (Redis is cache/pub-sub only, never authoritative, per `docs/architecture.md`). Phase 9.7 correction: the AWS-side change turns out to be *low-risk* — probed live via a local-only `terraform plan` (edited, planned, reverted, never applied) and `transit_encryption_enabled = true` reports as an **in-place update** (`0 to add, 1 to change, 0 to destroy`) with the pinned provider, not a destructive replacement as earlier phases assumed. The actual blocker is entirely application-side: `app/db/redis.py` constructs only `redis://` (no `rediss://`, no TLS/cert handling anywhere in the client). Enabling it AWS-side without an app-side change would either break connectivity outright or require a phased `transit_encryption_mode` (`preferred` → `required`) rollout coordinated with a `rediss://`-capable client — a real, two-sided migration (`REDIS_TLS_MIGRATION_REQUIRED`), not attempted blind.
 - RDS and ElastiCache are single-node/single-AZ — no automatic failover. Acceptable for a paper-trading platform whose system of record (Postgres) is backed up daily with 7-day retention; revisit `multi_az`/`automatic_failover_enabled` before this serves real financial data.
 - No autoscaling (§5) — `desired_count` is a manual/Terraform-variable lever.
 - Terraform state is local (§2) — fine for one operator, not for a team; migrate to an S3+DynamoDB backend before a second person needs to run `apply`.
