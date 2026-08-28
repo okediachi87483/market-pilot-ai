@@ -52,13 +52,23 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
 }
 
 # --- GitHub Actions OIDC deploy role (conditional) --------------------------
+#
+# The OIDC provider for token.actions.githubusercontent.com is looked
+# up, never created: AWS permits only one such provider per URL per
+# account, and this account already has one (pre-dating this project —
+# likely provisioned for a different repository/project sharing the
+# account). Referencing it via a data source is safe regardless of who
+# created it: any IAM role in this account may trust any OIDC provider
+# in this same account, and provider identity is fully determined by
+# its URL/thumbprints (both independently verified to be the genuine
+# GitHub Actions issuer), not by which Terraform state "owns" it.
+# Creating a second provider for the same URL is not just redundant —
+# AWS rejects it outright (one provider per URL per account).
 
-resource "aws_iam_openid_connect_provider" "github" {
+data "aws_iam_openid_connect_provider" "github" {
   count = var.github_repository != "" ? 1 : 0
 
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"] # GitHub's published root CA thumbprint
+  url = "https://token.actions.githubusercontent.com"
 }
 
 data "aws_iam_policy_document" "github_assume" {
@@ -69,7 +79,7 @@ data "aws_iam_policy_document" "github_assume" {
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github[0].arn]
+      identifiers = [data.aws_iam_openid_connect_provider.github[0].arn]
     }
 
     condition {

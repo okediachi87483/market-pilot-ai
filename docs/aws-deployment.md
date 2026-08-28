@@ -2,19 +2,19 @@
 
 Phase 9.5 (initial deployment), hardened in Phase 9.6 (go-live operational verification — see §10). Operational companion to [docs/infrastructure.md](infrastructure.md) (architecture reference) — this document is "how to actually do things": bootstrap, deploy, roll back, set secrets, and answer the on-call questions in §8.
 
-## 0. Current status (as of Phase 9.8)
+## 0. Current status (as of Phase 9.9)
 
 | Item | Status |
 |---|---|
-| AWS infrastructure | **Live**, zero Terraform drift (re-confirmed Phase 9.8) |
+| AWS infrastructure | **Live** — currently has real, pre-existing drift: the API/migrate ECS task definitions need replacement to pick up `REDIS_TLS_ENABLED` (added Phase 9.8, never applied). See §13 |
 | Production URL | `http://marketpilot-prod-alb-1177715901.us-east-1.elb.amazonaws.com` (HTTP only) |
 | Domain / HTTPS | **Blocked** — no domain available yet (§4/§10/§11/§12) |
-| GitHub repository | **Configured, verified reachable** — `origin` = `https://github.com/okediachi87483/market-pilot-ai.git` (confirmed via `git ls-remote`, currently empty). Push of `master` is prepared (commit made) but **not yet executed** — pending explicit human approval of the `git push` itself (§12) |
-| CI/CD execution | **Not yet triggered** — depends on the push above; `ci.yml`/`deploy.yml` remain audited and correct, never actually run on GitHub's infrastructure |
-| GitHub OIDC role | **Not created** — identity is now known (`okediachi87483/market-pilot-ai`), but populating `github_repository` and applying was explicitly deferred this phase pending human approval, not attempted blind (§12) |
-| Claude / AI Analyst | **Wiring verified, not activated** — no real API key available; `GET /ai/status` correctly reports `configured: false` (§6, §10, §11, §12 — re-verified live this phase) |
-| Terraform drift | **None** — re-verified live this phase |
-| Redis transit encryption | **Off** (unchanged) — application-side `rediss://` support shipped this phase (`Settings.redis_tls_enabled`, default `false`); AWS-side flag still default `false`, coupled to the same Terraform variable so the two can't drift apart. Rollout is documented (§6a) but not applied — a live, two-sided change with no CI/CD path to deploy it through yet (§12) |
+| GitHub repository | **Pushed and CI-verified** — `origin` = `https://github.com/okediachi87483/market-pilot-ai.git`, `master` at `b15871d`, GitHub Actions CI green on that commit |
+| CI/CD execution | CI verified on GitHub. CD (`deploy.yml`) **not yet run** — needs a `production` branch (doesn't exist yet) and the deploy IAM role (designed, not applied — §13) |
+| GitHub OIDC role | **Design validated, not applied.** `iam.tf` now references this AWS account's existing `token.actions.githubusercontent.com` OIDC provider via a `data` source instead of creating a duplicate (the account already has one, pre-dating this project). `terraform plan` confirms the trust policy resolves to exactly `repo:okediachi87483/market-pilot-ai:ref:refs/heads/production` — no wildcard. Apply is blocked by the unrelated ECS task-definition drift above; see §13 |
+| Claude / AI Analyst | **Wiring verified, not activated** — no real API key available; `GET /ai/status` correctly reports `configured: false` |
+| Terraform drift | **Present** — see the AWS infrastructure row above and §13. Confined to the two ECS task definitions; everything else (networking, RDS, Redis, ALB, ECR, security groups) matches configuration |
+| Redis transit encryption | **Off** (unchanged) — application-side `rediss://` support shipped Phase 9.8; AWS-side flag still default `false`. The task-definition drift above is this same setting's env-var mirror, still un-applied |
 
 ## 1. Prerequisites
 
@@ -273,3 +273,21 @@ Scope: close the GitHub connectivity gap if genuinely possible, add application-
 | `REDIS_TLS_MIGRATION_REQUIRED` | Narrowed — application side is done; only the coupled AWS-apply + manual-deploy step remains, pending approval |
 
 Nothing in this phase was worked around, faked, or defaulted past a genuine gate — every stop point above is either a real missing external resource or an explicit, deliberate wait for human authorization of a production-affecting action.
+
+## 13. Phase 9.9 — GitHub OIDC foundation (referencing the existing provider)
+
+**Discovery.** Populating `github_repository` and running `terraform plan` surfaced two independent problems, neither caused by this phase's own work:
+
+1. This AWS account already has an IAM OIDC provider for `token.actions.githubusercontent.com` (created `2026-07-11`, before this project's Terraform ever ran) — not tracked in this project's Terraform state. AWS permits only one such provider per URL per account, so the original `iam.tf` (which used a `resource "aws_iam_openid_connect_provider"` block) would have failed at apply time trying to create a duplicate, or worse, produced an ambiguous ownership conflict.
+2. Any `terraform plan` at all (not just this OIDC one) currently shows the API and migrate ECS task definitions wanting replacement, because Phase 9.8 added `REDIS_TLS_ENABLED` to their container environment in `ecs.tf` but that change was never applied to AWS — confirmed directly against the live task definition (`aws ecs describe-task-definition`), which genuinely lacks that variable.
+
+**Fix (this phase).** `infrastructure/terraform/iam.tf` now looks up the existing provider with a `data "aws_iam_openid_connect_provider" "github"` block (matched by `url`, not a hardcoded account-specific ARN) instead of creating one. The GitHub deploy role's trust policy references `data.aws_iam_openid_connect_provider.github[0].arn`. Everything else in the OIDC/deploy-role design (least-privilege ECR/ECS/PassRole policy, the `repo:...:ref:refs/heads/production` trust condition, the `github_repository != ""` gating) is unchanged.
+
+A local, gitignored `terraform.tfvars` now sets `github_repository = "okediachi87483/market-pilot-ai"` — without it, `terraform plan` would revert to the variable's empty default on every future run and want to *destroy* these resources again once applied.
+
+**Verified via `terraform plan` (read-only, not applied):**
+- `data.aws_iam_openid_connect_provider.github[0]` successfully resolves to the existing provider (`arn:aws:iam::036753124775:oidc-provider/token.actions.githubusercontent.com`) — no duplicate-provider creation attempted.
+- The new role's `assume_role_policy` trust condition is exactly `"token.actions.githubusercontent.com:sub" = "repo:okediachi87483/market-pilot-ai:ref:refs/heads/production"` — no wildcard.
+- Plan: `4 to add` (role, role policy, plus the two ECS task-definition replacements below), `0 to change`, `2 to destroy` (the two old task-definition revisions, as part of the pre-existing, unrelated replacement).
+
+**Not applied.** The plan still contains the two ECS task-definition replacements from the pre-existing Redis TLS drift (problem 2 above). This phase's rules explicitly forbid applying a plan containing ECS task-definition changes, and explicitly forbid routing around it with `-target` — so the OIDC design is validated and committed at the source level only. `terraform apply` was not run; the AWS account still has no `marketpilot-prod-github-deploy` role. Resolving this requires an explicit decision on the ECS task-definition drift (apply it — functionally inert, since `REDIS_TLS_ENABLED=false` matches the app's existing default — or scope the apply narrowly), which is outside this phase's authorization.
