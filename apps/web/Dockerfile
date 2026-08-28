@@ -29,7 +29,9 @@ ENV NODE_ENV=production \
     PORT=3000
 # node:22-slim already ships a non-root "node" user (uid/gid 1000).
 WORKDIR /app
-COPY --from=builder /build/public ./public
+# No apps/web/public directory exists in this repo (no favicon, no
+# static assets) — nothing for the standalone runtime to serve from
+# one, so it is intentionally not copied here.
 COPY --from=builder --chown=node:node /build/.next/standalone ./
 COPY --from=builder --chown=node:node /build/.next/static ./.next/static
 USER node
