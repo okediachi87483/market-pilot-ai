@@ -104,3 +104,20 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docker-build:
+    name: Docker build (both images, validation only — no push)
+    runs-on: ubuntu-latest
+    # Catches a broken Dockerfile/build context on every PR, before
+    # deploy.yml would otherwise be the first place to discover it (it
+    # only runs on the protected production branch). No ECR login, no
+    # push, no AWS access at all — pure local `docker build`.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build api image
+        run: docker build -t marketpilot-api:ci apps/api
+
+      - name: Build web image (same build-arg production deploys use)
+        run: docker build --build-arg NEXT_PUBLIC_API_URL="" -t marketpilot-web:ci apps/web
