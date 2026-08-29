@@ -231,7 +231,23 @@ variable "github_repository" {
     GitHub repository allowed to assume the deploy role via OIDC, as
     "owner/repo". Leave empty to skip creating the OIDC provider and
     deploy role entirely (e.g. before the repository has a GitHub
-    remote).
+    remote). Documentation/identification only — the actual trust
+    condition uses github_oidc_subject (see there for why).
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "github_oidc_subject" {
+  description = <<-EOT
+    The exact `token.actions.githubusercontent.com:sub` claim value the
+    deploy role's trust policy matches (StringEquals). Must be read
+    from this GitHub instance directly — GET
+    /repos/{owner}/{repo}/actions/oidc/customization/sub — rather than
+    assumed as `repo:<owner>/<repo>:ref:refs/heads/production`: this
+    instance's current default format embeds immutable owner/repo IDs
+    (`repo:<owner>@<ownerId>/<repo>@<repoId>:ref:...`). Leave empty
+    alongside github_repository until both are known.
   EOT
   type        = string
   default     = ""

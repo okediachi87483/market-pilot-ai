@@ -90,10 +90,21 @@ data "aws_iam_policy_document" "github_assume" {
 
     # Only this repository — and only its production branch — may assume
     # the deploy role (matches deploy.yml's trigger branch).
+    #
+    # StringEquals against the exact sub claim, not a name-based
+    # StringLike pattern: this GitHub instance's current default OIDC
+    # subject format embeds immutable owner/repo IDs
+    # (repo:<owner>@<ownerId>/<repo>@<repoId>:ref:...), confirmed via a
+    # real failed AssumeRoleWithWebIdentity call inspected in
+    # CloudTrail — a plain `repo:${var.github_repository}:ref:...`
+    # pattern never matches it. var.github_oidc_subject carries that
+    # exact, evidence-verified value (not a wildcard) — still scoped to
+    # exactly this repository and branch, arguably more precise since
+    # the IDs are immutable across a repo rename.
     condition {
-      test     = "StringLike"
+      test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:ref:refs/heads/production"]
+      values   = [var.github_oidc_subject]
     }
   }
 }
